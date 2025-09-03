@@ -26,22 +26,31 @@ jobs:
           set -eux
           rm -rf docs/_downloads
           mkdir -p docs/_downloads
+
+          # Copy from nas/
           rsync -a \
             --include='*/' \
             --include='*.sh' --include='*.py' --include='*.js' \
             --include='*.conf' --include='*.cfg' --include='*.service' --include='*.timer' \
             --include='rc.local' \
             --exclude='*' \
-            nas/ docs/_downloads/nas/ || true
+            nas/ docs/_downloads/nas/
+
+          # Copy from projects/
           rsync -a \
             --include='*/' \
             --include='*.sh' --include='*.py' --include='*.js' \
             --exclude='*' \
-            projects/ docs/_downloads/projects/ || true
+            projects/ docs/_downloads/projects/
+
+          # Copy from archive/
           rsync -a \
             --include='*/' \
             --include='*.sh' --include='*.py' --include='*.js' \
-            --include='*.conf' --include='*.cfg' --include='rc.local'
+            --include='*.conf' --include='*.cfg' --include='rc.local' \
+            --exclude='*' \
+            archive/ docs/_downloads/archive/
+
       - run: pip install mkdocs-material pymdown-extensions
       - run: mkdocs build --strict
 

@@ -1,2 +1,2 @@
 #!/bin/bash
-nmcli device wifi connect "GiGstreem" password "mb.KifVac"
+nmcli device wifi connect "GiGstreem" password "$PASSWORD"
