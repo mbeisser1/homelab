@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import csv
 import datetime as dt
 import hashlib
 import html
@@ -36,9 +37,99 @@ import sys
 import xml.etree.ElementTree as ET
 from typing import Dict, Iterable, List, Optional, Tuple
 
+
 # -----------------------------
 # Constants / Helpers
 # -----------------------------
+# Contacts utilities
+def load_contacts(csv_path: str) -> dict:
+    """
+    Load a contacts CSV mapping phone -> name.
+
+    Supported schemas:
+      1) Simple: headers 'name' + 'phone' (or 'phones'; comma/space-separated list)
+      2) Google Contacts export: 'First Name'/'Middle Name'/'Last Name', and one or more
+         'Phone N - Value' columns; also uses fallbacks like 'File As', 'Nickname', 'Name'.
+
+    Returns: dict {digits10: display_name}
+    """
+    mapping = {}
+    if not csv_path:
+        return mapping
+
+    def build_name(row: dict) -> str:
+        first = (row.get("First Name") or "").strip()
+        middle = (row.get("Middle Name") or "").strip()
+        last = (row.get("Last Name") or "").strip()
+        parts = [p for p in [first, middle, last] if p]
+        name = " ".join(parts).strip()
+        if not name:
+            for k in ("File As", "Nickname", "Name", "Full Name"):
+                v = (row.get(k) or "").strip()
+                if v:
+                    name = v
+                    break
+        return name
+
+    try:
+        import csv
+        import re
+
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            headers = [h or "" for h in (reader.fieldnames or [])]
+
+            # Simple schema detection
+            lower = {h.strip().lower(): h for h in headers}
+            simple_name = lower.get("name")
+            simple_phone = lower.get("phone") or lower.get("phones")
+
+            # Google schema phone columns: Phone N - Value, any N, any spacing/case
+            phone_value_cols = [
+                h for h in headers if re.search(r"^phone\s*\d+\s*-\s*value$", h, re.I)
+            ]
+            # Also pick up generic '...phone...' columns that aren't labels
+            generic_phone_cols = [
+                h
+                for h in headers
+                if ("phone" in h.lower())
+                and ("label" not in h.lower())
+                and h not in phone_value_cols
+            ]
+
+            for row in reader:
+                # Determine name
+                name = ""
+                if simple_name:
+                    name = (row.get(simple_name) or "").strip()
+                if not name:
+                    name = build_name(row)
+
+                # Collect raw phones from either schema
+                raw_phones = []
+                if simple_phone:
+                    raw = row.get(simple_phone) or ""
+                    if raw:
+                        raw_phones.extend(re.split(r"[\s,;]+", raw))
+
+                for col in phone_value_cols + generic_phone_cols:
+                    val = (row.get(col) or "").strip()
+                    if val:
+                        raw_phones.append(val)
+
+                # Normalize and record
+                for ph in raw_phones:
+                    d = sanitize_phone(ph)
+                    if len(d) == 10 and is_valid_nanp_10(d):
+                        # Prefer a non-empty name; don't overwrite an existing non-empty name
+                        if d not in mapping or (name and not mapping[d]):
+                            mapping[d] = name
+
+        return mapping
+    except Exception as e:
+        debug(f"WARNING: Failed to load contacts CSV '{csv_path}': {e}")
+        return {}
+
 
 DEFAULT_SELF_PHONE = "9412660605"
 DEFAULT_PROGRESS_EVERY = 500
@@ -63,6 +154,12 @@ def now_utc_iso(ms: int) -> str:
         # Fallback to epoch zero if input is malformed
         ts = dt.datetime.fromtimestamp(0, tz=dt.timezone.utc).replace(microsecond=0)
         return ts.isoformat()
+    except Exception:
+        # Fallback if ms is malformed
+        return (
+            dt.datetime.utcfromtimestamp(0).replace(microsecond=0).isoformat()
+            + "+00:00"
+        )
 
 
 def sanitize_phone(raw: str) -> str:
@@ -187,6 +284,9 @@ class Counters:
         self.improper_numbers_skipped_total = 0
         self.messages_deduped_total = 0
         self.total_items_seen = 0
+        self.contacts_loaded = 0
+        self.names_resolved_via_csv = 0
+        self.names_present_in_xml = 0
 
     def to_dict(self) -> Dict[str, int]:
         return {
@@ -196,6 +296,9 @@ class Counters:
             "improper_numbers_skipped_total": self.improper_numbers_skipped_total,
             "messages_deduped_total": self.messages_deduped_total,
             "total_items_seen": self.total_items_seen,
+            "contacts_loaded": self.contacts_loaded,
+            "names_resolved_via_csv": self.names_resolved_via_csv,
+            "names_present_in_xml": self.names_present_in_xml,
         }
 
 
@@ -204,12 +307,14 @@ def process_sms_xml(
     outdir: str,
     self_phone_digits: str,
     progress_every: int = DEFAULT_PROGRESS_EVERY,
+    contacts_map: dict | None = None,
 ) -> Dict[str, object]:
     """
     Parse the XML incrementally and write per-thread JSONs.
     Returns a summary dictionary.
     """
     counters = Counters()
+    contacts_map = contacts_map or {}
     threads: Dict[str, Dict[str, object]] = collections.defaultdict(
         lambda: {
             "thread_key": "",
@@ -231,6 +336,12 @@ def process_sms_xml(
         )
     self_addr = make_addr_from_phone(self_digits10)
     self_label = "Me"
+
+    # contacts counters
+    try:
+        counters.contacts_loaded = len(contacts_map)
+    except Exception:
+        counters.contacts_loaded = 0
 
     context = ET.iterparse(xml_path, events=("start", "end"))
     _, root = next(context)  # get root element to detect schema
@@ -264,6 +375,14 @@ def process_sms_xml(
 
             # Pull name (if any) from per-schema attribute
             contact_name = get_contact_name(attrs, schema)
+            if contact_name:
+                counters.names_present_in_xml += 1
+
+            # Fallback to contacts map if XML lacks a name
+            if not contact_name:
+                contact_name = contacts_map.get(other_digits) or None
+                if contact_name:
+                    counters.names_resolved_via_csv += 1
 
             # Build thread key based on counterpart
             thread_key = other_digits
@@ -287,7 +406,7 @@ def process_sms_xml(
                     "addr": person_address,
                     "phone": other_digits,
                     "is_self": False,
-                    "label": person_name or pretty_phone(other_digits),
+                    "label": (person_name or pretty_phone(other_digits)),
                 }
             else:
                 sender = {
@@ -345,15 +464,8 @@ def process_sms_xml(
             # Clear element to free memory
             elem.clear()
 
-            # Prevent memory leak in iterparse by clearing parent sometimes
-            # while elem.getprevious() is not None:
-            #     try:
-            #         parent = elem.getparent()  # only exists if using lxml
-            #         if parent is not None:
-            #             parent.remove(elem)
-            #     except AttributeError:
-            #         # stdlib ElementTree has no .getparent(), so just skip
-            #         pass
+            # ElementTree cleanup: elem.clear() is sufficient in stdlib; no getprevious/getparent needed
+            # del elem.getparent()[0] if hasattr(elem, "getparent") else None
 
         elif tag.endswith("mms"):
             counters.total_items_seen += 1
@@ -384,7 +496,7 @@ def process_sms_xml(
         last_body = None
         last_dir = None
         for m in msgs:
-            bnorm = " ".join((m.get("body") or "").split())
+            bnorm = " ".join((m.get("body") or "").split()).casefold()
             if deduped and last_dir == m["direction"] and last_body == bnorm:
                 counters.messages_deduped_total += 1
                 continue
@@ -441,6 +553,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument("xml_path", help="Path to SMS backup .xml file")
     parser.add_argument(
+        "--contacts", help="Optional contacts CSV to map phone numbers to names"
+    )
+    parser.add_argument(
         "--outdir", help="Output directory (default: <script_name>_YYMMDD_HHMMSS)"
     )
     parser.add_argument(
@@ -462,12 +577,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     outdir = args.outdir or compute_default_outdir(__file__)
+
+    contacts_map = {}
+    if getattr(args, "contacts", None):
+        contacts_map = load_contacts(args.contacts)
+
     try:
         summary = process_sms_xml(
             xml_path=xml_path,
             outdir=outdir,
             self_phone_digits=args.self_phone,
             progress_every=args.progress,
+            contacts_map=contacts_map,
         )
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
