@@ -2,7 +2,7 @@
 
 Below you can **download** each script and **view the source** inline.
 
-> After download, remember to make scripts executable:  
+> After download, remember to make scripts executable:
 > `chmod +x ./scriptname.sh`
 
 ---

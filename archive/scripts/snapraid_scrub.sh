@@ -23,12 +23,11 @@ if [ "${LASTLINE}" == "No error detected." ]; then
         MAIL_MSG="Weekly snapraid scrub FAILED. Error [${rtnstatus}] encountered. See log."
     fi
 
-    echo ${MAIL_MSG} | mailx -A ${SCRUB_LOG} -s ${MAIL_SUBJECT} ${MAIL_TO} 
+    echo ${MAIL_MSG} | mailx -A ${SCRUB_LOG} -s ${MAIL_SUBJECT} ${MAIL_TO}
 
 else
     MAIL_SUBJECT="Snapraid status failure"
     MAIL_MSG="Weekly snapraid scrub skipped. Errors were found. See log."
 
-    echo ${MAIL_MSG} | mailx -A ${LOG_FILE} -s ${MAIL_SUBJECT} ${MAIL_TO} 
+    echo ${MAIL_MSG} | mailx -A ${LOG_FILE} -s ${MAIL_SUBJECT} ${MAIL_TO}
 fi
-

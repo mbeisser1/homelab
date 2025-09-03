@@ -32,4 +32,3 @@ UUID=bcb50c95-c7c4-4135-989f-3a7aa0bbaf64 /               ext4    errors=remount
 # Omit parity
 #/srv/dev-disk-by-label-VOL3:/srv/dev-disk-by-label-VOL4:/srv/dev-disk-by-label-VOL5:/srv/dev-disk-by-label-VOL2:/srv/dev-disk-by-label-VOL1:/srv/dev-disk-by-label-VOL6:/srv/dev-disk-by-label-VOL7:/srv/dev-disk-by-label-VOLB:/srv/dev-disk-by-label-VOLC /srv/mergepool fuse.mergerfs defaults,allow_other,use_ino,category.create=mfs,minfreespace=50G 0 0
 /srv/dev-disk-by-label-VOL* /srv/mergepool fuse.mergerfs defaults,allow_other,use_ino,category.create=mfs,minfreespace=50G,func.getattr=newest 0 0
-

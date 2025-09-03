@@ -6,4 +6,3 @@ group::rwx
 group:data:rwx
 mask::rwx
 other::r-x
-

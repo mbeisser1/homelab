@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #if [[ $EUID -ne 0 ]]; then
-#    echo "This script must be run as root" 
+#    echo "This script must be run as root"
 #    exit 1
 #fi
 
@@ -16,4 +16,3 @@ if [ "${LASTLINE}" == "No error detected." ]; then
 else
     echo "Daily snapraid sync skipped. Errors were found. See log." | mailx -A ${LOG_FILE} -s "Snapraid status failure" "mjbeisser@gmail.com"
 fi
-

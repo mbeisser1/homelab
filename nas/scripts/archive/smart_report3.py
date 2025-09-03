@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import subprocess
 import datetime
-import socket
-import tempfile
 import os
+import socket
+import subprocess
+import tempfile
 
 MAIL_TO = "snapraid@bitrealm.dev"
 DEVICES = ["/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde"]  # adjust if needed
@@ -18,18 +18,18 @@ KEY_ATTRS = {
     "Power_On_Hours": "POH",
 }
 
+
 def run_smartctl(dev):
     try:
         out = subprocess.check_output(
-            ["sudo", "smartctl", "-A", "-d", "sat", dev],
-            stderr=subprocess.STDOUT
+            ["sudo", "smartctl", "-A", "-d", "sat", dev], stderr=subprocess.STDOUT
         ).decode()
     except subprocess.CalledProcessError:
         out = subprocess.check_output(
-            ["sudo", "smartctl", "-A", "-d", "sat,12", dev],
-            stderr=subprocess.STDOUT
+            ["sudo", "smartctl", "-A", "-d", "sat,12", dev], stderr=subprocess.STDOUT
         ).decode()
     return out
+
 
 def parse_attrs(output):
     attrs = {}
@@ -42,21 +42,33 @@ def parse_attrs(output):
                 attrs[KEY_ATTRS[name]] = raw
     return attrs
 
+
 def get_model(output):
     for line in output.splitlines():
         if "Device Model:" in line:
-            return line.split(":",1)[1].strip()
+            return line.split(":", 1)[1].strip()
     return "Unknown"
+
 
 def build_html_table(results):
     headers = ["Drive", "Model"] + list(KEY_ATTRS.values())
-    html = ["<table border='1' cellpadding='6' cellspacing='0' style='border-collapse: collapse; font-family: monospace;'>"]
-    html.append("<tr style='background:#333;color:#fff;'>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>")
+    html = [
+        "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse: collapse; font-family: monospace;'>"
+    ]
+    html.append(
+        "<tr style='background:#333;color:#fff;'>"
+        + "".join(f"<th>{h}</th>" for h in headers)
+        + "</tr>"
+    )
     for r in results:
         cells = []
         for h in headers:
-            val = r.get(h,"-")
-            if h in ["Realloc","Pending","Uncorr","Reported","CRC"] and val.isdigit() and int(val) > 0:
+            val = r.get(h, "-")
+            if (
+                h in ["Realloc", "Pending", "Uncorr", "Reported", "CRC"]
+                and val.isdigit()
+                and int(val) > 0
+            ):
                 cells.append(f"<td style='color:red;font-weight:bold;'>{val}</td>")
             elif h == "Temp" and val.isdigit():
                 v = int(val)
@@ -72,6 +84,7 @@ def build_html_table(results):
     html.append("</table>")
     return "\n".join(html)
 
+
 def main():
     host = socket.gethostname()
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -85,8 +98,8 @@ def main():
         row = {"Drive": os.path.basename(dev), "Model": model}
         row.update(attrs)
         results.append(row)
-        for key in ["Realloc","Pending","Uncorr","Reported","CRC"]:
-            val = attrs.get(key,"0")
+        for key in ["Realloc", "Pending", "Uncorr", "Reported", "CRC"]:
+            val = attrs.get(key, "0")
             if val.isdigit() and int(val) > 0:
                 overall_ok = False
 
@@ -115,12 +128,12 @@ def main():
     subprocess.run(
         ["mailx", "-a", "Content-type: text/html", "-s", subject, MAIL_TO],
         input=html_body.encode(),
-        check=False
+        check=False,
     )
 
     print(f"SMART report sent to {MAIL_TO} ({status})")
     os.unlink(html_file)
 
+
 if __name__ == "__main__":
     main()
-

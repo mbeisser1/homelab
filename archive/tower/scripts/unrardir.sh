@@ -8,12 +8,10 @@ RARFILES=( $(find . -iname '*.rar' | grep -v part) )
 
 for f in "${RARFILES[@]}"
 do
-    DIR=$(dirname ${f}) 
+    DIR=$(dirname ${f})
     cd ${DIR}
     # Get filename, we would remove .foo if it existed but we want the extension
     FBNAME=$(basename "$f" .foo)
     unrar e $FBNAME
     cd -
 done
-
-

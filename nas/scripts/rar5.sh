@@ -33,4 +33,3 @@ echo "Testing archive integrity..."
 rar t "${ARCHIVE_NAME}"
 
 echo "✅ Archive created and tested: ${ARCHIVE_NAME}"
-

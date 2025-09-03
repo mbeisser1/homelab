@@ -28,4 +28,3 @@ for cmd in "${fan_cmds[@]}"; do
 done
 
 echo "IPMI fan thresholds set successfully."
-

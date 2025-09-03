@@ -93,4 +93,3 @@ else
     mv "$LOG_FILE" "${LOG_FILE%.log}-$DATE_SUFFIX.log"
     log "Log saved to ${LOG_FILE%.log}-$DATE_SUFFIX.log"
 fi
-

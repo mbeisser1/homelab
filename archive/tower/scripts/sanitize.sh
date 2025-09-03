@@ -21,7 +21,7 @@ rename 's/MULTI//i' ./*
 rename 's/REMASTERED//i' ./*
 rename 's/EXTENDED//i' ./*
 rename 's/BLUEBIRD//i' ./*
-rename 's/\[Open\.Matte\]//i' ./* 
+rename 's/\[Open\.Matte\]//i' ./*
 rename 's/repack//i' ./*
 rename 's/proper//i' ./*
 

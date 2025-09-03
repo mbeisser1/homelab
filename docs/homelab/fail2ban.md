@@ -3,4 +3,3 @@
 - Jails
 - Filters
 - Testing with `fail2ban-regex`
-

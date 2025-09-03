@@ -18,10 +18,10 @@ FANS=("FAN1" "FAN2" "FAN4")
 
 for FAN in "${FANS[@]}"; do
   echo "Setting thresholds for $FAN..."
-  
+
   ipmitool -I lanplus -H "$IPMI_HOST" -U "$IPMI_USER" -P "$IPMI_PASS" \
     sensor thresh "$FAN" lower $LOWER_NONCRIT $LOWER_CRIT $LOWER_NONRECOV
-  
+
   ipmitool -I lanplus -H "$IPMI_HOST" -U "$IPMI_USER" -P "$IPMI_PASS" \
     sensor thresh "$FAN" upper $UPPER_NONCRIT $UPPER_CRIT $UPPER_NONRECOV
 done

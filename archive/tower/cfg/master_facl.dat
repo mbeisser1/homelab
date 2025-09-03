@@ -10,4 +10,3 @@ default:user::rwx
 default:group::rwx
 default:mask::rwx
 default:other::r-x
-

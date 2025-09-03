@@ -9,7 +9,7 @@ find . -name "*.r[0-9][0-9]" -type f -delete
 find . -type d -name Sample -execdir rm -r "{}" \;
 
 Unrar all files, extract in directory that rar file is in
-find -iname '*.rar' -execdir unrar e {} \; 
+find -iname '*.rar' -execdir unrar e {} \;
 rsync -f'+ *[ACMH]' -azvvP -e ssh beissemj@thoon.feralhosting.com:/media/sdx1/beissemj/private/deluge/completed/ /plex/transfer/
 
 # copy all files matching pattern: 'The.A or The.L or The.M*'

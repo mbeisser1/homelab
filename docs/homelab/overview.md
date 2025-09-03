@@ -8,4 +8,3 @@ Welcome! This site documents my homelab, NAS, and VPS setup.
 - **Homelab:** topology, VLANs, WireGuard
 - **NAS:** SnapRAID, backup strategy
 - **VPS:** Caddy, Fail2ban, reverse proxy
-

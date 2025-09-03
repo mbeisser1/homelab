@@ -1,17 +1,16 @@
-import re
 import argparse
 import email
-from pathlib import Path
+import html
+import re
+from collections import defaultdict
 from datetime import datetime
-from email import policy
-from email.parser import BytesParser
+from email import encoders, policy
+from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
-from email.mime.base import MIMEBase
-from email import encoders
-import html
-from collections import defaultdict
+from email.parser import BytesParser
+from pathlib import Path
 
 # =========================
 # ALIASES – YOUR DATASET
@@ -63,8 +62,13 @@ for entry in ALIASES_RAW:
 # HELPER FUNCTIONS
 # =========================
 
-MY_EMAILS = {"beissemj@gmail.com", "mjbeisser@gmail.com", "mbeisser_archive@bitrealm.dev"}
+MY_EMAILS = {
+    "beissemj@gmail.com",
+    "mjbeisser@gmail.com",
+    "mbeisser_archive@bitrealm.dev",
+}
 MY_NUMBERS = {"941-266-0605"}
+
 
 def sanitize_number(num):
     if not num:
@@ -76,6 +80,7 @@ def sanitize_number(num):
         return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
     return None
 
+
 def extract_number_from_text(text):
     if not text:
         return None
@@ -84,6 +89,7 @@ def extract_number_from_text(text):
         return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
     return None
 
+
 def is_my_address(email_addr, phone_num):
     if email_addr and email_addr.lower() in MY_EMAILS:
         return True
@@ -91,6 +97,7 @@ def is_my_address(email_addr, phone_num):
     if phone_sanitized and phone_sanitized in MY_NUMBERS:
         return True
     return False
+
 
 def parse_eml(filepath):
     with open(filepath, "rb") as f:
@@ -103,9 +110,13 @@ def parse_eml(filepath):
     to_number = sanitize_number(msg.get("X-smssync-address", to_addr))
 
     if not from_number:
-        from_number = extract_number_from_text(from_name) or extract_number_from_text(from_addr)
+        from_number = extract_number_from_text(from_name) or extract_number_from_text(
+            from_addr
+        )
     if not to_number:
-        to_number = extract_number_from_text(to_name) or extract_number_from_text(to_addr)
+        to_number = extract_number_from_text(to_name) or extract_number_from_text(
+            to_addr
+        )
 
     from_number = sanitize_number(from_number)
     to_number = sanitize_number(to_number)
@@ -128,7 +139,9 @@ def parse_eml(filepath):
         contact_number = (from_addr or "").lower()
 
     try:
-        date_obj = email.utils.parsedate_to_datetime(msg["Date"]) if msg["Date"] else None
+        date_obj = (
+            email.utils.parsedate_to_datetime(msg["Date"]) if msg["Date"] else None
+        )
     except Exception:
         date_obj = None
     if not date_obj:
@@ -159,8 +172,9 @@ def parse_eml(filepath):
         "attachments": attachments,
         "contact_name": contact_name,
         "contact_number": contact_number,
-        "file_path": filepath
+        "file_path": filepath,
     }
+
 
 def canonicalize(contact_name, contact_number):
     # Rule 1: number first
@@ -170,6 +184,7 @@ def canonicalize(contact_name, contact_number):
     if contact_name and contact_name in NAME_MAP:
         return NAME_MAP[contact_name]
     return contact_name or contact_number or "Unknown"
+
 
 def build_combined_eml_html(contact_name, messages):
     messages.sort(key=lambda m: m["date"])
@@ -181,7 +196,7 @@ def build_combined_eml_html(contact_name, messages):
     related = MIMEMultipart("related")
     html_parts = [
         "<html><body style='background-color:#f5f5f5;font-family:sans-serif;'>",
-        f"<h2 style='text-align:center;'>{contact_name}</h2>"
+        f"<h2 style='text-align:center;'>{contact_name}</h2>",
     ]
     prev_date_str = None
     inline_images = []
@@ -189,24 +204,36 @@ def build_combined_eml_html(contact_name, messages):
     used_filenames = set()
 
     for idx, m in enumerate(messages):
-        msg_date_str = m["date"].strftime("%Y-%m-%d") if m["date"] != datetime.min else "Unknown"
+        msg_date_str = (
+            m["date"].strftime("%Y-%m-%d") if m["date"] != datetime.min else "Unknown"
+        )
         if prev_date_str != msg_date_str:
-            html_parts.append(f"<div style='text-align:center;margin:10px 0;color:#555;font-size:0.9em;border-bottom:1px solid #ccc;'>{msg_date_str}</div>")
+            html_parts.append(
+                f"<div style='text-align:center;margin:10px 0;color:#555;font-size:0.9em;border-bottom:1px solid #ccc;'>{msg_date_str}</div>"
+            )
             prev_date_str = msg_date_str
 
-        ts = m["date"].strftime("%Y-%m-%d %H:%M:%S") if m["date"] != datetime.min else "Unknown time"
+        ts = (
+            m["date"].strftime("%Y-%m-%d %H:%M:%S")
+            if m["date"] != datetime.min
+            else "Unknown time"
+        )
         sender = "Me" if m["from_me"] else contact_name
         align = "right" if m["from_me"] else "left"
         bubble_color = "#0b93f6" if m["from_me"] else "#e5e5ea"
         text_color = "#fff" if m["from_me"] else "#000"
 
-        html_parts.append(f"<div style='text-align:{align};color:#999;font-size:0.75em;margin:5px 10px;'>{ts} - {sender}</div>")
+        html_parts.append(
+            f"<div style='text-align:{align};color:#999;font-size:0.75em;margin:5px 10px;'>{ts} - {sender}</div>"
+        )
 
         bubble_style = f"background-color:{bubble_color};color:{text_color};padding:8px 12px;border-radius:18px;max-width:60%;display:inline-block;word-wrap:break-word;"
 
         bubble_content = []
         if m["text"]:
-            bubble_content.append(f"<p style='margin:0;white-space:pre-wrap'>{html.escape(m['text'])}</p>")
+            bubble_content.append(
+                f"<p style='margin:0;white-space:pre-wrap'>{html.escape(m['text'])}</p>"
+            )
 
         for att_idx, att in enumerate(m["attachments"], start=1):
             cid = f"att_{idx}_{att_idx}"
@@ -216,7 +243,9 @@ def build_combined_eml_html(contact_name, messages):
             fname = base_filename
             counter = 1
             while fname in used_filenames:
-                fname = f"{Path(base_filename).stem}_{counter}{Path(base_filename).suffix}"
+                fname = (
+                    f"{Path(base_filename).stem}_{counter}{Path(base_filename).suffix}"
+                )
                 counter += 1
             used_filenames.add(fname)
             if maintype == "image":
@@ -224,17 +253,25 @@ def build_combined_eml_html(contact_name, messages):
                 img_part.add_header("Content-ID", f"<{cid}>")
                 img_part.add_header("Content-Disposition", "inline", filename=fname)
                 inline_images.append(img_part)
-                bubble_content.append(f"<img src='cid:{cid}' width='300' style='max-width:300px;height:auto;border-radius:12px;margin-top:5px;'>")
+                bubble_content.append(
+                    f"<img src='cid:{cid}' width='300' style='max-width:300px;height:auto;border-radius:12px;margin-top:5px;'>"
+                )
             else:
                 base_part = MIMEBase(maintype, subtype)
                 base_part.set_payload(payload)
                 encoders.encode_base64(base_part)
-                base_part.add_header("Content-Disposition", "attachment", filename=fname)
+                base_part.add_header(
+                    "Content-Disposition", "attachment", filename=fname
+                )
                 other_files.append(base_part)
                 bubble_content.append(f"<p style='margin:0;'>[Attachment: {fname}]</p>")
 
         if bubble_content:
-            html_parts.append(f"<div style='text-align:{align};margin:2px 10px;'><div style='{bubble_style}'>" + "".join(bubble_content) + "</div></div>")
+            html_parts.append(
+                f"<div style='text-align:{align};margin:2px 10px;'><div style='{bubble_style}'>"
+                + "".join(bubble_content)
+                + "</div></div>"
+            )
 
     html_parts.append("</body></html>")
     html_body = MIMEText("\r\n".join(html_parts), "html", "utf-8")
@@ -245,6 +282,7 @@ def build_combined_eml_html(contact_name, messages):
     for file_part in other_files:
         top_msg.attach(file_part)
     return top_msg
+
 
 def dedupe_messages(messages):
     unique_msgs, duplicates, prev = [], [], None
@@ -258,6 +296,7 @@ def dedupe_messages(messages):
             prev = comparable
     return unique_msgs, duplicates
 
+
 def safe_write_eml(eml_msg, name, output_dir):
     safe_base = re.sub(r"[^A-Za-z0-9_\-]", "_", f"SMS archive - {name}")
     out_path = output_dir / f"{safe_base}.eml"
@@ -269,8 +308,11 @@ def safe_write_eml(eml_msg, name, output_dir):
         f.write(eml_msg.as_bytes(policy=policy.SMTP))
     return out_path
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Combine EML SMS messages into one file per canonical person")
+    parser = argparse.ArgumentParser(
+        description="Combine EML SMS messages into one file per canonical person"
+    )
     parser.add_argument("input_dir", help="Folder containing .eml files")
     args = parser.parse_args()
 
@@ -294,10 +336,13 @@ def main():
         total_dupes += len(dupes)
         eml_msg = build_combined_eml_html(name, unique_msgs)
         out_path = safe_write_eml(eml_msg, name, output_dir)
-        print(f"Wrote: {out_path.name} (messages: {len(unique_msgs)}, dupes removed: {len(dupes)})")
+        print(
+            f"Wrote: {out_path.name} (messages: {len(unique_msgs)}, dupes removed: {len(dupes)})"
+        )
 
     print(f"\nTotal duplicates removed: {total_dupes}")
     print(f"Styled HTML EMLs written to: {output_dir}")
+
 
 if __name__ == "__main__":
     main()

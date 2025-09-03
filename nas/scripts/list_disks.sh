@@ -95,4 +95,3 @@ done
 # - PTLABEL = partition table type (gpt/msdos).
 # - FS_LABEL = per-partition filesystem volume label.
 # - Run with sudo for fuller SERIAL/WWN/PTTYPE data.
-

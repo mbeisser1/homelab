@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-import os
-import sys
-import glob
 import base64
+import glob
+import html
+import os
 import re
+import sys
+from collections import defaultdict
 from email import policy
 from email.parser import BytesParser
 from email.utils import parsedate_to_datetime
-from collections import defaultdict
-import html
 
 # Optional, used only for a fallback heuristic
 YOUR_EMAILS = ["mjbeisser@gmail.com", "beissemj@gmail.com"]
 
 # ---------- helpers: phone & label sanitation ----------
+
 
 def sanitize_number(num: str | None) -> str | None:
     """Return XXX-XXX-XXXX (strip +1/leading 1) if a phone-like string; else None."""
@@ -26,6 +27,7 @@ def sanitize_number(num: str | None) -> str | None:
         return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
     return None
 
+
 def is_phone_only_label(label: str) -> bool:
     """True if the label is essentially just a phone number (with punctuation)."""
     if not label:
@@ -34,10 +36,16 @@ def is_phone_only_label(label: str) -> bool:
         return False
     return sanitize_number(label) is not None
 
+
 ARCHIVE_PREFIXES = [
-    re.compile(r"^\s*SMS\s+archive\b\s*[-:]*\s*", re.IGNORECASE),  # "SMS archive - " / "SMS archive: "
-    re.compile(r"^\s*SMS[_\s]*archive\b[_\s\-:]*", re.IGNORECASE), # "SMS_archive - " etc.
+    re.compile(
+        r"^\s*SMS\s+archive\b\s*[-:]*\s*", re.IGNORECASE
+    ),  # "SMS archive - " / "SMS archive: "
+    re.compile(
+        r"^\s*SMS[_\s]*archive\b[_\s\-:]*", re.IGNORECASE
+    ),  # "SMS_archive - " etc.
 ]
+
 
 def strip_sms_archive_prefix(s: str) -> str:
     """Remove any 'SMS archive' prefix in common formats."""
@@ -45,6 +53,7 @@ def strip_sms_archive_prefix(s: str) -> str:
     for rx in ARCHIVE_PREFIXES:
         out = rx.sub("", out)
     return out.strip()
+
 
 def normalize_display_label(raw: str) -> str:
     """
@@ -60,10 +69,12 @@ def normalize_display_label(raw: str) -> str:
             return sn
     return s or "Unknown"
 
+
 # ---------- helpers: HTML / CID handling ----------
 
 CID_RE = re.compile(r"cid:<?([^>'\"\s]+)>?", flags=re.IGNORECASE)
 BODY_RE = re.compile(r"(?is)<body[^>]*>(.*?)</body>")
+
 
 def extract_inner_body(html_text: str) -> str:
     """If given a full HTML doc, return its <body> inner HTML; else return as-is."""
@@ -72,13 +83,16 @@ def extract_inner_body(html_text: str) -> str:
     m = BODY_RE.search(html_text)
     return m.group(1) if m else html_text
 
+
 def inline_cid_images(html_body: str, cid_map: dict) -> str:
     """Replace cid:... references with data: URIs when available."""
     if not html_body or not cid_map:
         return html_body or ""
     return CID_RE.sub(lambda m: cid_map.get(m.group(1), m.group(0)), html_body)
 
+
 # ---------- EML parsing ----------
+
 
 def parse_eml(filepath: str) -> dict:
     with open(filepath, "rb") as f:
@@ -94,8 +108,15 @@ def parse_eml(filepath: str) -> dict:
     label_from_subject = normalize_display_label(subject)
 
     # If the subject was useless, try headers
-    if not label_from_subject or label_from_subject.lower() in {"sms archive", "unknown"}:
-        cand = recipient if any(e.lower() in sender.lower() for e in YOUR_EMAILS) else sender
+    if not label_from_subject or label_from_subject.lower() in {
+        "sms archive",
+        "unknown",
+    }:
+        cand = (
+            recipient
+            if any(e.lower() in sender.lower() for e in YOUR_EMAILS)
+            else sender
+        )
         cand = (cand or "").strip()
         if "<" in cand and ">" in cand:
             cand = cand.split("<")[0].strip()
@@ -115,14 +136,15 @@ def parse_eml(filepath: str) -> dict:
         body = f"<div>{safe}</div>"
 
     return {
-        "thread_id": subject or contact_label,   # stable key per file
+        "thread_id": subject or contact_label,  # stable key per file
         "subject": subject,
-        "contact_label": contact_label,          # already normalized for UI
+        "contact_label": contact_label,  # already normalized for UI
         "from": sender,
         "to": recipient,
         "date": date,
-        "body": body,                            # already HTML-safe
+        "body": body,  # already HTML-safe
     }
+
 
 def extract_body_and_images(msg):
     """
@@ -146,14 +168,18 @@ def extract_body_and_images(msg):
                     html_body = part.get_content()
                 except Exception:
                     payload = part.get_payload(decode=True) or b""
-                    html_body = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+                    html_body = payload.decode(
+                        part.get_content_charset() or "utf-8", errors="replace"
+                    )
 
             elif ctype == "text/plain" and plain_body is None:
                 try:
                     plain_body = part.get_content()
                 except Exception:
                     payload = part.get_payload(decode=True) or b""
-                    plain_body = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+                    plain_body = payload.decode(
+                        part.get_content_charset() or "utf-8", errors="replace"
+                    )
 
             elif ctype.startswith("image/"):
                 try:
@@ -173,17 +199,23 @@ def extract_body_and_images(msg):
                 html_body = msg.get_content()
             except Exception:
                 payload = msg.get_payload(decode=True) or b""
-                html_body = payload.decode(msg.get_content_charset() or "utf-8", errors="replace")
+                html_body = payload.decode(
+                    msg.get_content_charset() or "utf-8", errors="replace"
+                )
         elif ctype == "text/plain":
             try:
                 plain_body = msg.get_content()
             except Exception:
                 payload = msg.get_payload(decode=True) or b""
-                plain_body = payload.decode(msg.get_content_charset() or "utf-8", errors="replace")
+                plain_body = payload.decode(
+                    msg.get_content_charset() or "utf-8", errors="replace"
+                )
 
     return html_body, plain_body, cid_map
 
+
 # ---------- HTML generation ----------
+
 
 def safe_id(s: str) -> str:
     """Make a safe DOM id from any string."""
@@ -192,12 +224,15 @@ def safe_id(s: str) -> str:
         sid = "_" + sid
     return sid
 
+
 def generate_html(conversations: dict) -> str:
     # Build sortable rows: (thread_id, msgs, display_label, phone_only, num_key, name_key)
     conv_rows = []
     for thread_id, msgs in conversations.items():
         # Normalize again from the stored, already-normalized label (defensive)
-        display_label = normalize_display_label(msgs[0]['contact_label'] or msgs[0]['subject'] or "Unknown")
+        display_label = normalize_display_label(
+            msgs[0]["contact_label"] or msgs[0]["subject"] or "Unknown"
+        )
         phone_only = is_phone_only_label(display_label)
 
         # numeric sort key for phone-only: compare by last 10 digits
@@ -209,7 +244,9 @@ def generate_html(conversations: dict) -> str:
         num_key = digits.zfill(10) if phone_only else ""
 
         name_key = display_label.lower()
-        conv_rows.append((thread_id, msgs, display_label, phone_only, num_key, name_key))
+        conv_rows.append(
+            (thread_id, msgs, display_label, phone_only, num_key, name_key)
+        )
 
     # Sort: phone-only first; within group sort by num_key or name_key
     conv_rows.sort(key=lambda r: (0 if r[3] else 1, r[4] if r[3] else r[5]))
@@ -227,7 +264,7 @@ def generate_html(conversations: dict) -> str:
         ".date { color: gray; font-size: 0.85em; }",
         ".images img { max-width: 300px; display: block; margin-top: 5px; }",
         "</style></head><body>",
-        "<div id='sidebar'>"
+        "<div id='sidebar'>",
     ]
 
     # Sidebar items (numbers-first)
@@ -244,15 +281,18 @@ def generate_html(conversations: dict) -> str:
         header_name = html.escape(display_label)
         html_out.append(f"<div id='conv_{tid}' style='display:none;'>")
         html_out.append(f"<h2>{header_name}</h2>")
-        for msg in sorted(msgs, key=lambda m: m['date'] or ""):
-            sender = html.escape(msg['from'] or "")
-            date_str = msg['date'].strftime("%Y-%m-%d %H:%M:%S") if msg['date'] else ''
-            html_out.append(f"<div class='message'><div><b>{sender}</b> <span class='date'>{date_str}</span></div>")
+        for msg in sorted(msgs, key=lambda m: m["date"] or ""):
+            sender = html.escape(msg["from"] or "")
+            date_str = msg["date"].strftime("%Y-%m-%d %H:%M:%S") if msg["date"] else ""
+            html_out.append(
+                f"<div class='message'><div><b>{sender}</b> <span class='date'>{date_str}</span></div>"
+            )
             html_out.append(f"<div>{msg['body']}</div>")
             html_out.append("</div>")
         html_out.append("</div>")
 
-    html_out.append("""
+    html_out.append(
+        """
     <script>
     function showConversation(id) {
         var src = document.getElementById('conv_' + id);
@@ -260,12 +300,15 @@ def generate_html(conversations: dict) -> str:
         window.scrollTo(0, 0);
     }
     </script>
-    """)
+    """
+    )
 
     html_out.append("</body></html>")
     return "\n".join(html_out)
 
+
 # ---------- main ----------
+
 
 def main():
     if len(sys.argv) != 3:
@@ -279,7 +322,7 @@ def main():
 
     for filepath in glob.glob(os.path.join(input_folder, "*.eml")):
         msg_data = parse_eml(filepath)
-        conversations[msg_data['thread_id']].append(msg_data)
+        conversations[msg_data["thread_id"]].append(msg_data)
 
     html_content = generate_html(conversations)
 
@@ -287,6 +330,7 @@ def main():
         f.write(html_content)
 
     print(f"HTML archive written to {output_file}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,29 @@
+# Enforce LF line endings for code and scripts
+*.sh     text eol=lf
+*.py     text eol=lf
+*.js     text eol=lf
+*.cfg    text eol=lf
+*.conf   text eol=lf
+*.service text eol=lf
+*.timer   text eol=lf
+rc.local text eol=lf
+
+# Markdown and docs — normalize but don’t force LF/CRLF
+*.md     text
+*.yml    text
+*.yaml   text
+
+# Binary files — never attempt diff/merge
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+
+# Archives — treat as binary
+*.zip    binary
+*.tar    binary
+*.gz     binary
+*.rar    binary
+*.7z     binary

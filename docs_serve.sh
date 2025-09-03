@@ -21,4 +21,3 @@ pip install -r requirements.txt
 
 # Run mkdocs dev server
 exec mkdocs serve
-

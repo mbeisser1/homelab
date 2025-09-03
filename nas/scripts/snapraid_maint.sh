@@ -60,4 +60,3 @@ fi
 
 # optional: prune old logs (>30 days)
 find "$LOG_DIR" -type f -mtime +30 -delete || true
-
