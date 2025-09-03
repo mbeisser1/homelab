@@ -30,6 +30,13 @@ markdown_extensions:
 plugins:
   - search
 
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
+
+extra:
+  mermaid:
+    theme: dark
+
 nav:
   - Home: index.md
   - Homelab:

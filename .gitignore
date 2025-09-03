@@ -1,0 +1,35 @@
+# Python virtualenv
+.venv/
+env/
+venv/
+ENV/
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Logs and dumps
+*.log
+*.pot
+*.mo
+
+# MkDocs build output
+/site/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Backup files
+*~
+
