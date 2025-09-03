@@ -1,0 +1,17 @@
+exit 1
+#Delete all commands matching pattern, from current directory down
+find . -name "*.rar" -type f -delete
+
+#Delete r00-r99 files
+find . -name "*.r[0-9][0-9]" -type f -delete
+
+#Remove directory Sample and all files in it
+find . -type d -name Sample -execdir rm -r "{}" \;
+
+Unrar all files, extract in directory that rar file is in
+find -iname '*.rar' -execdir unrar e {} \; 
+rsync -f'+ *[ACMH]' -azvvP -e ssh beissemj@thoon.feralhosting.com:/media/sdx1/beissemj/private/deluge/completed/ /plex/transfer/
+
+# copy all files matching pattern: 'The.A or The.L or The.M*'
+# specifically exclude pattern of 'Star*' and then exclude everything else that isn't matches. FUCKING RETARDED
+rsync -f'+ The.[ALM]*' --exclude 'Star*' --exclude '*' -azvvP -e ssh beissemj@thoon.feralhosting.com:/media/sdx1/beissemj/private/deluge/seed/ /plex/transfer/

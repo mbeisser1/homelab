@@ -1,0 +1,9 @@
+# file: pool
+# owner: root
+# group: users
+user::rwx
+group::rwx
+group:data:rwx
+mask::rwx
+other::r-x
+

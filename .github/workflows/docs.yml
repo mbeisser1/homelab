@@ -17,6 +17,29 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install mkdocs-material pymdown-extensions
+      - name: Stage downloadable files
+        run: |
+          set -eux
+          # start fresh
+          rm -rf docs/_downloads
+          mkdir -p docs/_downloads
+          # mirror only certain file types from these source dirs
+          rsync -a \
+            --include='*/' \
+            --include='*.sh' --include='*.py' \
+            --include='*.conf' --include='*.cfg' --include='*.service' --include='*.timer' \
+            --exclude='*' \
+            nas/ docs/_downloads/nas/ || true
+          rsync -a \
+            --include='*/' \
+            --include='*.sh' --include='*.py' \
+            --exclude='*' \
+            projects/ docs/_downloads/projects/ || true
+          rsync -a \
+            --include='*/' \
+            --include='*.sh' --include='*.py' --include='*.conf' --include='*.cfg' \
+            --exclude='*' \
+            archive/ docs/_downloads/archive/ || true
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@v3
         with:
