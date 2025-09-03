@@ -11,38 +11,43 @@ jobs:
       contents: read
       pages: write
       id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}      
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install mkdocs-material pymdown-extensions
+
+      # Stage downloadable files from your repo into docs/_downloads/
       - name: Stage downloadable files
         run: |
           set -eux
-          # start fresh
           rm -rf docs/_downloads
           mkdir -p docs/_downloads
-          # mirror only certain file types from these source dirs
           rsync -a \
             --include='*/' \
-            --include='*.sh' --include='*.py' \
+            --include='*.sh' --include='*.py' --include='*.js' \
             --include='*.conf' --include='*.cfg' --include='*.service' --include='*.timer' \
+            --include='rc.local' \
             --exclude='*' \
             nas/ docs/_downloads/nas/ || true
           rsync -a \
             --include='*/' \
-            --include='*.sh' --include='*.py' \
+            --include='*.sh' --include='*.py' --include='*.js' \
             --exclude='*' \
             projects/ docs/_downloads/projects/ || true
           rsync -a \
             --include='*/' \
-            --include='*.sh' --include='*.py' --include='*.conf' --include='*.cfg' \
-            --exclude='*' \
-            archive/ docs/_downloads/archive/ || true
+            --include='*.sh' --include='*.py' --include='*.js' \
+            --include='*.conf' --include='*.cfg' --include='rc.local'
+      - run: pip install mkdocs-material pymdown-extensions
       - run: mkdocs build --strict
+
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
-      - uses: actions/deploy-pages@v4
-
+      - id: deployment
+        uses: actions/deploy-pages@v4            
