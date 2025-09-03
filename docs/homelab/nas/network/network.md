@@ -2,7 +2,7 @@
 
 ```mermaid
 graph LR
-  LAN[LAN] -->|WireGuard| VPS[VPS]
+  NAS[NAS] <-->|WireGuard| VPS[VPS]
   VPS --> Caddy[Caddy]
-  Caddy --> Services[Services (Nextcloud, Wiki, etc.)]
+  Caddy --> Services[Services: Nextcloud, Wiki, etc.]
 ```
