@@ -1,27 +1,22 @@
 #!/usr/bin/env python3
 """
-sms_xml_to_json.py
+sms_xml_to_json.py (latest)
 
 Convert SMS Backup XML to per-thread JSON files, ready for iOS-style HTML rendering later.
 
-v1 scope:
-- Parse <sms> messages now.
-- Detect <mms> nodes and count them (skip content in v1).
+Features:
+- Parse <sms> messages now (skip <mms>, just count them).
 - Group into 1:1 threads by counterpart phone.
-- Skip only numbers that are NOT valid NANP after sanitization.
-- Deduplicate consecutive identical messages (same direction) by body.
+- Skip numbers not valid NANP after sanitization.
+- Deduplicate adjacent identical messages (same direction).
 - Progress printed every N items (default 500).
 - Write summary_report.json with counts.
+- Supports optional --contacts CSV mapping numbers to names (Google Contacts export or simple CSV).
 
-Defaults are chosen to be EML-JSON compatible where reasonable:
-- Addresses use "<E164>@unknown.email".
-- message_id is a stable SHA-1 hash of ("xml" | direction | normalized_phone | timestamp_ms | body_stripped).
-
-Usage:
-  python sms_xml_to_json.py input.xml [--outdir OUTDIR] [--self-phone 9412660605] [--progress 500]
+Defaults:
+- --self-phone defaults to 9412660605 (override allowed).
+- --progress defaults to 500 (override allowed).
 """
-
-from __future__ import annotations
 
 import argparse
 import collections
@@ -29,30 +24,129 @@ import csv
 import datetime as dt
 import hashlib
 import html
-import io
 import json
 import os
 import re
 import sys
+import unicodedata
 import xml.etree.ElementTree as ET
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional
+
+DEFAULT_SELF_PHONE = "9412660605"
+DEFAULT_PROGRESS_EVERY = 500
+MAX_FILENAME_LEN = 120
+UNKNOWN_EMAIL_SUFFIX = "@unknown.email"
 
 
-# -----------------------------
-# Constants / Helpers
-# -----------------------------
-# Contacts utilities
+def debug(msg: str) -> None:
+    print(msg, flush=True)
+
+
+def now_utc_iso(ms: int) -> str:
+    """Return UTC ISO-8601 with timezone offset +00:00 for an epoch milliseconds integer."""
+    try:
+        sec = ms / 1000.0
+        ts = dt.datetime.fromtimestamp(sec, tz=dt.timezone.utc).replace(microsecond=0)
+        return ts.isoformat()  # e.g., '2011-05-19T15:35:04+00:00'
+    except Exception:
+        ts = dt.datetime.fromtimestamp(0, tz=dt.timezone.utc).replace(microsecond=0)
+        return ts.isoformat()
+
+
+def sanitize_phone(raw: str) -> str:
+    if not raw:
+        return ""
+    digits = re.sub(r"\D+", "", raw)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    return digits
+
+
+def is_valid_nanp_10(digits10: str) -> bool:
+    if len(digits10) != 10:
+        return False
+    area = digits10[0]
+    exchange = digits10[3]
+    if area in "01" or exchange in "01":
+        return False
+    return True
+
+
+def e164(digits10: str) -> str:
+    return "+1" + digits10
+
+
+def pretty_phone(digits10: str) -> str:
+    if len(digits10) != 10:
+        return digits10
+    return f"({digits10[0:3]}) {digits10[3:6]}-{digits10[6:]}"
+
+
+def make_addr_from_phone(digits10: str) -> str:
+    return f"{e164(digits10)}{UNKNOWN_EMAIL_SUFFIX}"
+
+
+def safe_filename(s: str) -> str:
+    s = re.sub(r"[\\/:*?\"<>|]+", "_", s).strip()
+    s = re.sub(r"\s+", " ", s)
+    return s or "unknown"
+
+
+def enforce_max_filename(
+    base: str, suffix: str, max_len: int = MAX_FILENAME_LEN
+) -> str:
+    combined = base + suffix
+    if len(combined) <= max_len:
+        return combined
+    h = hashlib.sha1(combined.encode("utf-8")).hexdigest()[:10]
+    keep = max_len - len(suffix) - len(h) - 1
+    trimmed_base = (base[:keep]).rstrip()
+    return f"{trimmed_base}_{h}{suffix}"
+
+
+def stable_message_id(
+    source: str, direction: str, norm_phone: str, ts_ms: int, body: str
+) -> str:
+    body_norm = " ".join(html.unescape(body or "").split())
+    parts = [source, direction, norm_phone, str(ts_ms), body_norm]
+    return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
+
+
+def strip_signature(text: str) -> str:
+    return text
+
+
+def normalize_text_for_compare(text: str) -> str:
+    t = unicodedata.normalize("NFC", text or "")
+    t = " ".join(t.split()).strip()
+    return t.casefold()
+
+
+def detect_schema(root: ET.Element) -> str:
+    tag = root.tag.lower()
+    if tag.endswith("smses"):
+        return "smses"
+    if tag.endswith("allsms"):
+        return "allsms"
+    return tag
+
+
+def get_contact_name(attrs: Dict[str, str], schema: str) -> Optional[str]:
+    if schema == "allsms":
+        return attrs.get("name") or None
+    return attrs.get("contact_name") or None
+
+
+def get_type_direction(attrs: Dict[str, str]) -> Optional[str]:
+    t = attrs.get("type")
+    if t == "1":
+        return "in"
+    if t == "2":
+        return "out"
+    return None
+
+
 def load_contacts(csv_path: str) -> dict:
-    """
-    Load a contacts CSV mapping phone -> name.
-
-    Supported schemas:
-      1) Simple: headers 'name' + 'phone' (or 'phones'; comma/space-separated list)
-      2) Google Contacts export: 'First Name'/'Middle Name'/'Last Name', and one or more
-         'Phone N - Value' columns; also uses fallbacks like 'File As', 'Nickname', 'Name'.
-
-    Returns: dict {digits10: display_name}
-    """
     mapping = {}
     if not csv_path:
         return mapping
@@ -72,23 +166,15 @@ def load_contacts(csv_path: str) -> dict:
         return name
 
     try:
-        import csv
-        import re
-
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             headers = [h or "" for h in (reader.fieldnames or [])]
-
-            # Simple schema detection
             lower = {h.strip().lower(): h for h in headers}
             simple_name = lower.get("name")
             simple_phone = lower.get("phone") or lower.get("phones")
-
-            # Google schema phone columns: Phone N - Value, any N, any spacing/case
             phone_value_cols = [
                 h for h in headers if re.search(r"^phone\s*\d+\s*-\s*value$", h, re.I)
             ]
-            # Also pick up generic '...phone...' columns that aren't labels
             generic_phone_cols = [
                 h
                 for h in headers
@@ -98,182 +184,29 @@ def load_contacts(csv_path: str) -> dict:
             ]
 
             for row in reader:
-                # Determine name
                 name = ""
                 if simple_name:
                     name = (row.get(simple_name) or "").strip()
                 if not name:
                     name = build_name(row)
-
-                # Collect raw phones from either schema
                 raw_phones = []
                 if simple_phone:
                     raw = row.get(simple_phone) or ""
                     if raw:
                         raw_phones.extend(re.split(r"[\s,;]+", raw))
-
                 for col in phone_value_cols + generic_phone_cols:
                     val = (row.get(col) or "").strip()
                     if val:
                         raw_phones.append(val)
-
-                # Normalize and record
                 for ph in raw_phones:
                     d = sanitize_phone(ph)
                     if len(d) == 10 and is_valid_nanp_10(d):
-                        # Prefer a non-empty name; don't overwrite an existing non-empty name
                         if d not in mapping or (name and not mapping[d]):
                             mapping[d] = name
-
         return mapping
     except Exception as e:
         debug(f"WARNING: Failed to load contacts CSV '{csv_path}': {e}")
         return {}
-
-
-DEFAULT_SELF_PHONE = "9412660605"
-DEFAULT_PROGRESS_EVERY = 500
-
-# max length for base filename before adding suffix/hash
-MAX_FILENAME_LEN = 120
-
-UNKNOWN_EMAIL_SUFFIX = "@unknown.email"
-
-
-def debug(msg: str) -> None:
-    print(msg, flush=True)
-
-
-def now_utc_iso(ms: int) -> str:
-    """Return UTC ISO-8601 with timezone offset +00:00 for an epoch milliseconds integer."""
-    try:
-        sec = ms / 1000.0
-        ts = dt.datetime.fromtimestamp(sec, tz=dt.timezone.utc).replace(microsecond=0)
-        return ts.isoformat()  # e.g., '2011-05-19T15:35:04+00:00'
-    except Exception:
-        # Fallback to epoch zero if input is malformed
-        ts = dt.datetime.fromtimestamp(0, tz=dt.timezone.utc).replace(microsecond=0)
-        return ts.isoformat()
-    except Exception:
-        # Fallback if ms is malformed
-        return (
-            dt.datetime.utcfromtimestamp(0).replace(microsecond=0).isoformat()
-            + "+00:00"
-        )
-
-
-def sanitize_phone(raw: str) -> str:
-    """Keep digits only. Drop leading '1' for NANP 11-digit. Return digits or empty if none."""
-    if not raw:
-        return ""
-    digits = re.sub(r"\D+", "", raw)
-    if len(digits) == 11 and digits.startswith("1"):
-        digits = digits[1:]
-    return digits
-
-
-def is_valid_nanp_10(digits10: str) -> bool:
-    """
-    NANP validity (basic):
-      - Exactly 10 digits
-      - Area code and central office (exchange) cannot start with 0 or 1 (NXX)
-    """
-    if len(digits10) != 10:
-        return False
-    area = digits10[0]
-    exchange = digits10[3]
-    if area in "01" or exchange in "01":
-        return False
-    return True
-
-
-def e164(digits10: str) -> str:
-    return "+1" + digits10
-
-
-def pretty_phone(digits10: str) -> str:
-    """(407) 555-0123 style."""
-    if len(digits10) != 10:
-        return digits10
-    return f"({digits10[0:3]}) {digits10[3:6]}-{digits10[6:]}"
-
-
-def make_addr_from_phone(digits10: str) -> str:
-    return f"{e164(digits10)}{UNKNOWN_EMAIL_SUFFIX}"
-
-
-def safe_filename(s: str) -> str:
-    # Replace path-separators and problematic chars
-    s = re.sub(r"[\\/:*?\"<>|]+", "_", s).strip()
-    # Collapse spaces
-    s = re.sub(r"\s+", " ", s)
-    return s or "unknown"
-
-
-def enforce_max_filename(
-    base: str, suffix: str, max_len: int = MAX_FILENAME_LEN
-) -> str:
-    """
-    Ensure base + suffix fits within max_len by truncating base and appending a short hash.
-    """
-    combined = base + suffix
-    if len(combined) <= max_len:
-        return combined
-    h = hashlib.sha1(combined.encode("utf-8")).hexdigest()[:10]
-    keep = max_len - len(suffix) - len(h) - 1  # 1 for underscore
-    trimmed_base = (base[:keep]).rstrip()
-    return f"{trimmed_base}_{h}{suffix}"
-
-
-def stable_message_id(
-    source: str, direction: str, norm_phone: str, ts_ms: int, body: str
-) -> str:
-    """
-    Create a stable ID across runs for XML-derived messages.
-    """
-    body_norm = " ".join(html.unescape(body or "").split())
-    parts = [source, direction, norm_phone, str(ts_ms), body_norm]
-    return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
-
-
-def detect_schema(root: ET.Element) -> str:
-    """
-    Return 'smses' or 'allsms' for known schemas; otherwise fallback to root.tag.
-    """
-    tag = root.tag.lower()
-    if tag.endswith("smses"):
-        return "smses"
-    if tag.endswith("allsms"):
-        return "allsms"
-    return tag
-
-
-def get_contact_name(attrs: Dict[str, str], schema: str) -> Optional[str]:
-    if schema == "allsms":
-        # Attached schema uses 'name'
-        return attrs.get("name") or None
-    # SMS Backup & Restore uses 'contact_name'
-    return attrs.get("contact_name") or None
-
-
-def get_type_direction(attrs: Dict[str, str]) -> Optional[str]:
-    """
-    Map 'type' attribute to 'in' or 'out'
-      - 1 => in (received)
-      - 2 => out (sent)
-    Return None if not mapped.
-    """
-    t = attrs.get("type")
-    if t == "1":
-        return "in"
-    if t == "2":
-        return "out"
-    return None
-
-
-# -----------------------------
-# Core processing
-# -----------------------------
 
 
 class Counters:
@@ -309,12 +242,13 @@ def process_sms_xml(
     progress_every: int = DEFAULT_PROGRESS_EVERY,
     contacts_map: dict | None = None,
 ) -> Dict[str, object]:
-    """
-    Parse the XML incrementally and write per-thread JSONs.
-    Returns a summary dictionary.
-    """
     counters = Counters()
     contacts_map = contacts_map or {}
+    try:
+        counters.contacts_loaded = len(contacts_map)
+    except Exception:
+        counters.contacts_loaded = 0
+
     threads: Dict[str, Dict[str, object]] = collections.defaultdict(
         lambda: {
             "thread_key": "",
@@ -328,7 +262,6 @@ def process_sms_xml(
         }
     )
 
-    # Pre-computed self fields
     self_digits10 = sanitize_phone(self_phone_digits)
     if len(self_digits10) != 10:
         raise ValueError(
@@ -337,76 +270,56 @@ def process_sms_xml(
     self_addr = make_addr_from_phone(self_digits10)
     self_label = "Me"
 
-    # contacts counters
-    try:
-        counters.contacts_loaded = len(contacts_map)
-    except Exception:
-        counters.contacts_loaded = 0
-
     context = ET.iterparse(xml_path, events=("start", "end"))
-    _, root = next(context)  # get root element to detect schema
+    _, root = next(context)
     schema = detect_schema(root)
 
     for event, elem in context:
         if event != "end":
             continue
-
         tag = elem.tag.lower()
         if tag.endswith("sms"):
             counters.total_items_seen += 1
             attrs = elem.attrib
-
             direction = get_type_direction(attrs)
             if direction is None:
                 elem.clear()
                 continue
-
-            # Counterpart phone is in 'address'
             raw_addr = attrs.get("address", "")
             other_digits = sanitize_phone(raw_addr)
-
-            # Skip improper numbers only if they are not valid NANP after sanitization
             if not is_valid_nanp_10(other_digits):
                 counters.improper_numbers_skipped_total += 1
                 elem.clear()
                 if counters.total_items_seen % progress_every == 0:
                     debug(f"[progress] processed {counters.total_items_seen} items ...")
                 continue
-
-            # Pull name (if any) from per-schema attribute
             contact_name = get_contact_name(attrs, schema)
             if contact_name:
                 counters.names_present_in_xml += 1
-
-            # Fallback to contacts map if XML lacks a name
             if not contact_name:
                 contact_name = contacts_map.get(other_digits) or None
                 if contact_name:
                     counters.names_resolved_via_csv += 1
-
-            # Build thread key based on counterpart
             thread_key = other_digits
             thread_label = contact_name or pretty_phone(other_digits)
             person_name = contact_name
             person_address = make_addr_from_phone(other_digits)
-
-            # Acquire message fields
             try:
                 ts_ms = int(attrs.get("date", "0"))
             except ValueError:
                 ts_ms = 0
             ts_iso = now_utc_iso(ts_ms)
             body_raw = attrs.get("body", "") or ""
-            body_txt = html.unescape(body_raw).strip()
-
-            # Build sender object
+            body_txt = html.unescape(body_raw)
+            body_txt = strip_signature(body_txt)
+            body_txt = unicodedata.normalize("NFC", body_txt).strip()
             if direction == "in":
                 sender = {
                     "name": person_name,
                     "addr": person_address,
                     "phone": other_digits,
                     "is_self": False,
-                    "label": (person_name or pretty_phone(other_digits)),
+                    "label": person_name or pretty_phone(other_digits),
                 }
             else:
                 sender = {
@@ -416,17 +329,7 @@ def process_sms_xml(
                     "is_self": True,
                     "label": self_label,
                 }
-
-            # Build message_id (stable)
-            msg_id = stable_message_id(
-                source="xml",
-                direction=direction,
-                norm_phone=other_digits,
-                ts_ms=ts_ms,
-                body=body_txt,
-            )
-
-            # Initialize / update thread bucket
+            msg_id = stable_message_id("xml", direction, other_digits, ts_ms, body_txt)
             th = threads[thread_key]
             if not th["thread_key"]:
                 th["thread_key"] = thread_key
@@ -442,7 +345,6 @@ def process_sms_xml(
                     }
                 ]
                 th["messages"] = []
-
             th["messages"].append(
                 {
                     "message_id": msg_id,
@@ -451,78 +353,54 @@ def process_sms_xml(
                     "timestamp_iso": ts_iso,
                     "body": body_txt,
                     "sender": sender,
-                    "attachments": [],  # SMS v1: empty; MMS v2 will populate
+                    "attachments": [],
                 }
             )
-
             counters.sms_parsed_total += 1
-
-            # progress
             if counters.total_items_seen % progress_every == 0:
                 debug(f"[progress] processed {counters.total_items_seen} items ...")
-
-            # Clear element to free memory
             elem.clear()
-
-            # ElementTree cleanup: elem.clear() is sufficient in stdlib; no getprevious/getparent needed
-            # del elem.getparent()[0] if hasattr(elem, "getparent") else None
-
         elif tag.endswith("mms"):
             counters.total_items_seen += 1
             counters.mms_found_total += 1
-            counters.mms_skipped_total += 1  # v1 skips content
-
+            counters.mms_skipped_total += 1
             if counters.total_items_seen % progress_every == 0:
                 debug(f"[progress] processed {counters.total_items_seen} items ...")
-
             elem.clear()
-
-        # (ignore other tags and attributes)
-        # clear non-root occasionally
         if elem is not root:
             elem.clear()
 
-    # Post-process threads: sort, dedup consecutive duplicates, counts, write files
     os.makedirs(outdir, exist_ok=True)
-
     threads_written = 0
     for tkey, th in threads.items():
-        # Sort
         msgs = th["messages"]
         msgs.sort(key=lambda m: (m["timestamp_ms"], m["direction"], m["body"]))
-
-        # Dedup consecutive same-direction identical bodies
-        deduped: List[dict] = []
-        last_body = None
-        last_dir = None
+        deduped = []
         for m in msgs:
-            bnorm = " ".join((m.get("body") or "").split()).casefold()
-            if deduped and last_dir == m["direction"] and last_body == bnorm:
-                counters.messages_deduped_total += 1
-                continue
+            norm_body = normalize_text_for_compare(m.get("body") or "")
+            if deduped:
+                prev = deduped[-1]
+                prev_norm = normalize_text_for_compare(prev.get("body") or "")
+                if (
+                    prev.get("direction") == m.get("direction")
+                    and prev_norm == norm_body
+                ):
+                    counters.messages_deduped_total += 1
+                    continue
             deduped.append(m)
-            last_dir = m["direction"]
-            last_body = bnorm
-
         th["messages"] = deduped
         th["message_count"] = len(deduped)
-
-        # Filename: prefer contact name; fallback to pretty phone; then append _combined.json
         base_name = th["thread_label"] or pretty_phone(tkey)
         base_name = safe_filename(base_name)
-        # Ensure uniqueness across similarly named contacts by appending phone digits
         base_name_unique = f"{base_name}_{tkey}"
         final_name = enforce_max_filename(
             base_name_unique, "_combined.json", MAX_FILENAME_LEN
         )
-
         out_path = os.path.join(outdir, final_name)
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(th, f, ensure_ascii=False, indent=2)
-
         threads_written += 1
 
-    # summary report
     summary = counters.to_dict()
     summary.update(
         {
@@ -532,12 +410,9 @@ def process_sms_xml(
     )
     with open(os.path.join(outdir, "summary_report.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
-
-    # final console summary
     debug("\n--- Summary ---")
     for k, v in summary.items():
         debug(f"{k}: {v}")
-
     return summary
 
 
@@ -561,7 +436,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--self-phone",
         default=DEFAULT_SELF_PHONE,
-        help="Your own phone number (digits, any format). Default: %(default)s",
+        help="Your own phone number. Default: %(default)s",
     )
     parser.add_argument(
         "--progress",
@@ -570,30 +445,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Print progress every N items. Default: %(default)s",
     )
     args = parser.parse_args(argv)
-
     xml_path = args.xml_path
     if not os.path.isfile(xml_path):
         print(f"ERROR: input file not found: {xml_path}", file=sys.stderr)
         return 2
-
     outdir = args.outdir or compute_default_outdir(__file__)
-
     contacts_map = {}
     if getattr(args, "contacts", None):
         contacts_map = load_contacts(args.contacts)
-
     try:
-        summary = process_sms_xml(
-            xml_path=xml_path,
-            outdir=outdir,
-            self_phone_digits=args.self_phone,
-            progress_every=args.progress,
-            contacts_map=contacts_map,
-        )
+        process_sms_xml(xml_path, outdir, args.self_phone, args.progress, contacts_map)
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
-
     return 0
 
 
