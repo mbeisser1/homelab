@@ -122,6 +122,78 @@ def normalize_text_for_compare(text: str) -> str:
     return t.casefold()
 
 
+def mms_direction_and_participants(addrs: list, self_digits10: str):
+    """
+    Determine direction ('in' or 'out') and participants (non-self) from MMS <addrs> list.
+    Each addr is a dict with keys: address (string), type (string).
+      - type="137" typically = FROM
+      - type="151" typically = TO
+    """
+    from_nums = []
+    to_nums = []
+    for a in addrs:
+        num = sanitize_phone(a.get("address") or "")
+        if not is_valid_nanp_10(num):
+            continue
+        t = (a.get("type") or "").strip()
+        if t == "137":
+            from_nums.append(num)
+        elif t == "151":
+            to_nums.append(num)
+
+    # If self is among FROM -> outgoing; if self among TO and someone else is FROM -> incoming.
+    if self_digits10 in from_nums:
+        direction = "out"
+        counterpart_nums = sorted(set([n for n in to_nums if n != self_digits10]))
+    else:
+        direction = "in"
+        # MMS often includes all recipients in TO and the sender in FROM;
+        # for incoming, counterpart = union(FROM + TO) minus self
+        counterpart_nums = sorted(
+            set([n for n in (from_nums + to_nums) if n != self_digits10])
+        )
+
+    return direction, counterpart_nums
+
+
+def parse_mms_parts(parts: list):
+    """
+    Extract body text (concatenate text/plain parts by seq order) and attachments list
+    for non-text parts (skip application/smil).
+    Each part is a dict with attributes from <part>.
+    """
+    text_parts = []
+    attachments = []
+
+    def seq_key(p):
+        try:
+            return int(p.get("seq", "0"))
+        except Exception:
+            return 0
+
+    for part in sorted(parts, key=seq_key):
+        ct = (part.get("ct") or "").lower()
+        name = part.get("cl") or part.get("name") or ""
+        text = part.get("text") or ""
+        if ct.startswith("text/plain"):
+            # Unescape HTML entities; normalize line breaks; we'll NFC later upstream
+            txt = html.unescape(text)
+            text_parts.append(txt)
+        elif ct == "application/smil":
+            continue
+        else:
+            att = {
+                "filename": name or None,
+                "mime": ct or None,
+                "size": part.get("ctt_s") or None,
+                "cid": part.get("cid") or None,
+            }
+            attachments.append(att)
+
+    body = "\n".join([t.strip() for t in text_parts if t is not None])
+    return body, attachments
+
+
 def detect_schema(root: ET.Element) -> str:
     tag = root.tag.lower()
     if tag.endswith("smses"):
@@ -213,6 +285,7 @@ class Counters:
     def __init__(self) -> None:
         self.sms_parsed_total = 0
         self.mms_found_total = 0
+        self.mms_parsed_total = 0
         self.mms_skipped_total = 0
         self.improper_numbers_skipped_total = 0
         self.messages_deduped_total = 0
@@ -225,6 +298,7 @@ class Counters:
         return {
             "sms_parsed_total": self.sms_parsed_total,
             "mms_found_total": self.mms_found_total,
+            "mms_parsed_total": self.mms_parsed_total,
             "mms_skipped_total": self.mms_skipped_total,
             "improper_numbers_skipped_total": self.improper_numbers_skipped_total,
             "messages_deduped_total": self.messages_deduped_total,
@@ -363,12 +437,155 @@ def process_sms_xml(
         elif tag.endswith("mms"):
             counters.total_items_seen += 1
             counters.mms_found_total += 1
-            counters.mms_skipped_total += 1
+            # Gather child parts and addrs
+            parts = []
+            addrs = []
+            for child in list(elem):
+                tchild = child.tag.lower()
+                if tchild.endswith("parts"):
+                    for pnode in list(child):
+                        if pnode.tag.lower().endswith("part"):
+                            parts.append(pnode.attrib.copy())
+                elif tchild.endswith("addrs"):
+                    for anode in list(child):
+                        if anode.tag.lower().endswith("addr"):
+                            addrs.append(anode.attrib.copy())
+
+            # Determine direction and participants from addrs
+            direction, counterpart_nums = mms_direction_and_participants(
+                addrs, self_digits10
+            )
+
+            # Skip if we cannot determine any valid counterpart numbers (e.g., all short codes)
+            if not counterpart_nums:
+                counters.mms_skipped_total += 1
+                if counters.total_items_seen % progress_every == 0:
+                    debug(f"[progress] processed {counters.total_items_seen} items ...")
+                elem.clear()
+                continue
+
+            # Build thread key/label
+            if len(counterpart_nums) == 1:
+                thread_key = counterpart_nums[0]
+                # Try to resolve a name from contacts
+                cname = contacts_map.get(thread_key)
+                thread_label = cname or pretty_phone(thread_key)
+                person_name = cname
+                participants = [
+                    {
+                        "name": cname,
+                        "addr": make_addr_from_phone(thread_key),
+                        "phone": thread_key,
+                    }
+                ]
+                person_address = make_addr_from_phone(thread_key)
+            else:
+                # Group MMS: construct a Group key
+                thread_key = "Group_" + "_".join(counterpart_nums)
+                # Resolve names where possible
+                names = [
+                    contacts_map.get(n) or pretty_phone(n) for n in counterpart_nums
+                ]
+                thread_label = (
+                    "Group: " + ", ".join(names[:5]) + ("…" if len(names) > 5 else "")
+                )
+                person_name = None
+                person_address = None
+                participants = [
+                    {
+                        "name": contacts_map.get(n) or None,
+                        "addr": make_addr_from_phone(n),
+                        "phone": n,
+                    }
+                    for n in counterpart_nums
+                ]
+
+            # Timestamp
+            try:
+                ts_ms = int(elem.attrib.get("date", "0"))
+                if ts_ms == 0:
+                    # some exports have date_sent in seconds
+                    ds = elem.attrib.get("date_sent")
+                    if ds and ds.isdigit():
+                        ts_ms = int(ds) * 1000
+            except Exception:
+                ts_ms = 0
+            ts_iso = now_utc_iso(ts_ms)
+
+            # Message body & attachments from parts
+            body_txt, atts = parse_mms_parts(parts)
+            body_txt = strip_signature(body_txt)
+            body_txt = unicodedata.normalize("NFC", body_txt).strip()
+
+            # Sender object
+            if direction == "in":
+                # For incoming group, sender is ambiguous (use first from address if available)
+                from_addrs = [
+                    sanitize_phone(a.get("address") or "")
+                    for a in addrs
+                    if (a.get("type") or "") == "137"
+                ]
+                from_addrs = [
+                    n for n in from_addrs if is_valid_nanp_10(n) and n != self_digits10
+                ]
+                if from_addrs:
+                    s_num = from_addrs[0]
+                else:
+                    s_num = counterpart_nums[0]
+                s_name = contacts_map.get(s_num) or None
+                sender = {
+                    "name": s_name,
+                    "addr": make_addr_from_phone(s_num),
+                    "phone": s_num,
+                    "is_self": False,
+                    "label": s_name or pretty_phone(s_num),
+                }
+            else:
+                sender = {
+                    "name": "Me",
+                    "addr": make_addr_from_phone(self_digits10),
+                    "phone": self_digits10,
+                    "is_self": True,
+                    "label": "Me",
+                }
+
+            msg_id = stable_message_id(
+                "mms",
+                direction,
+                (counterpart_nums[0] if counterpart_nums else ""),
+                ts_ms,
+                body_txt,
+            )
+
+            # Initialize / update thread
+            th = threads[thread_key]
+            if not th["thread_key"]:
+                th["thread_key"] = thread_key
+                th["thread_label"] = thread_label
+                th["person_name"] = person_name
+                th["person_address"] = person_address
+                th["self_address"] = make_addr_from_phone(self_digits10)
+                th["participants"] = participants
+                th["messages"] = []
+
+            th["messages"].append(
+                {
+                    "message_id": msg_id,
+                    "direction": direction,
+                    "timestamp_ms": ts_ms,
+                    "timestamp_iso": ts_iso,
+                    "body": body_txt,
+                    "sender": sender,
+                    "attachments": atts,
+                }
+            )
+
+            counters.mms_parsed_total += 1
+
             if counters.total_items_seen % progress_every == 0:
                 debug(f"[progress] processed {counters.total_items_seen} items ...")
             elem.clear()
-        if elem is not root:
-            elem.clear()
+        # (removed) clearing child here would drop <part>/<addr> before <mms> end.
 
     os.makedirs(outdir, exist_ok=True)
     threads_written = 0
