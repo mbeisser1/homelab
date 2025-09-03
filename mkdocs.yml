@@ -1,0 +1,45 @@
+site_name: Bitrealm Homelab
+site_description: Docs for my homelab, NAS, and VPS setup
+site_url: https://mbeisser1.github.io/homelab/
+repo_url: https://github.com/mbeisser1/homelab
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - content.action.edit
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - scheme: slate
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.tabbed
+  - pymdownx.tasklist
+  - pymdownx.snippets
+  - pymdownx.critic
+  - tables
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Homelab:
+      - Overview: homelab/overview.md
+      - Network: homelab/network.md
+      - WireGuard: homelab/wireguard.md
+  - NAS:
+      - SnapRAID: nas/snapraid.md
+  - VPS:
+      - Caddy: vps/caddy.md
+      - Fail2ban: vps/fail2ban.md
+
