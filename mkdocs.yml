@@ -6,15 +6,21 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   features:
-    - navigation.indexes
-  features:
-    - content.action.edit
-    - navigation.instant
-    - navigation.sections
-    - content.code.copy
-    - content.tabs.link
+    - navigation.expand # <-- expands every collapsible section on load
+    - navigation.indexes # (optional) make section titles clickable to index.md
   palette:
-    - scheme: slate
+    - scheme: default # light as the default
+      primary: blue grey # pick any: indigo, teal, blue grey, etc.
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - scheme: slate # optional dark mode
+      primary: blue grey
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
 markdown_extensions:
   - pymdownx.snippets:
       base_path:
@@ -25,7 +31,11 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       use_pygments: true
       pygments_lang_class: true
