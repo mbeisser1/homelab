@@ -6,6 +6,8 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   features:
+    - navigation.indexes
+  features:
     - content.action.edit
     - navigation.instant
     - navigation.sections
@@ -41,10 +43,7 @@ extra:
   mermaid:
     theme: dark
 nav:
-  - Home: index.md
-  - Foo: scratch.md
-  - Homelab:
-      - Overview: homelab/overview.md
+  - Home:
       - NAS:
           - Scripts: homelab/nas/scripts.md
           - Network:
@@ -53,6 +52,8 @@ nav:
               - Caddy: homelab/nas/network/caddy.md
               - Fail2ban: homelab/nas/network/fail2ban.md
           - Snapraid: homelab/nas/postfix_fastmail_setup.md
+      - VPS:
+          - Config: homelab/vps/vps.md
   - Projects:
       - SMS Tools: projects/sms.md
   - Downloads:
