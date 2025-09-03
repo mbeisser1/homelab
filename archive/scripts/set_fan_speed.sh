@@ -6,25 +6,25 @@ ipmi_ip=$(echo "$ipmi_output" | awk -F ': *' '/^IP Address[[:space:]]*:/ {print 
 
 # Check if IP was found
 if [[ -z "$ipmi_ip" ]]; then
-  echo "Error: Could not determine IPMI IP address from 'ipmitool lan print 1'"
-  exit 1
+	echo "Error: Could not determine IPMI IP address from 'ipmitool lan print 1'"
+	exit 1
 fi
 
 echo "Found IPMI IP address: $ipmi_ip"
 
 # Define the fan commands
 fan_cmds=(
-  "ipmitool -H $ipmi_ip -U root -P root sensor thresh FAN3 lower 100 200 300"
-  "ipmitool -H $ipmi_ip -U root -P root sensor thresh FAN4 lower 100 200 300"
+	"ipmitool -H $ipmi_ip -U root -P root sensor thresh FAN3 lower 100 200 300"
+	"ipmitool -H $ipmi_ip -U root -P root sensor thresh FAN4 lower 100 200 300"
 )
 
 # Run and check each command
 for cmd in "${fan_cmds[@]}"; do
-  echo "Running: $cmd"
-  if ! eval "$cmd"; then
-    echo "Error: Command failed — $cmd"
-    exit 1
-  fi
+	echo "Running: $cmd"
+	if ! eval "$cmd"; then
+		echo "Error: Command failed — $cmd"
+		exit 1
+	fi
 done
 
 echo "IPMI fan thresholds set successfully."

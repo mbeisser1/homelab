@@ -12,7 +12,7 @@ fi
 if [ -z "${DEST}" ]; then
 	#echo "Destination path required. (Default: /pool/tranfer/)"
 	echo "Destination path required. Defaultng to /pool/tranfer/"
-    DEST="/pool/transfer/"
+	DEST="/pool/transfer/"
 	#EXIT=1
 fi
 

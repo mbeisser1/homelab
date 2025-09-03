@@ -16,6 +16,11 @@ theme:
     - scheme: slate
 
 markdown_extensions:
+  - pymdownx.snippets:
+      base_path:
+        - .      # /pool/repo/homelab
+        - docs
+      check_paths: true
   - admonition
   - toc:
       permalink: true
@@ -24,8 +29,8 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.tabbed
   - pymdownx.tasklist
-  - pymdownx.snippets
   - tables
+
 
 plugins:
   - search
@@ -39,14 +44,17 @@ extra:
 
 nav:
   - Home: index.md
+  - Foo: scratch.md
   - Homelab:
       - Overview: homelab/overview.md
-      - Network: homelab/network.md
-      - WireGuard: homelab/wireguard.md
-      - Caddy: homelab/caddy.md
-      - Fail2ban: homelab/fail2ban.md
       - NAS:
           - Scripts: homelab/nas/scripts.md
+          - Network:
+            - Network: homelab/nas/network/network.md
+            - WireGuard: homelab/nas/network/wireguard.md
+            - Caddy: homelab/nas/network/caddy.md
+            - Fail2ban: homelab/nas/network/fail2ban.md
+          - Snapraid: homelab/nas/postfix_fastmail_setup.md
   - Projects:
       - SMS Tools: projects/sms.md
   - Downloads:

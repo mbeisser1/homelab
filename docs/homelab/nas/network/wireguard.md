@@ -1,6 +1,6 @@
 
 ### `docs/homelab/wireguard.md`
-```markdown
+
 # WireGuard
 
 - Peers
