@@ -1,0 +1,23 @@
+[jellyfin]
+enabled  = true
+port     = 8096,8920
+filter   = jellyfin
+# Your path and rolling file pattern:
+logpath  = /var/log/jellyfin/jellyfin*.log
+# Tuning (adjust to taste)
+maxretry = 7
+findtime = 10m
+bantime  = 12h
+# Optional: whitelist your LAN / Tailscale IPs so you never lock yourself out
+ignoreip = 127.0.0.1/8 ::1 172.16.0.0/12
+
+bantime.increment = true
+bantime.factor    = 2
+bantime.maxtime   = 7d
+
+destemail = nas@bitrealm.dev
+sender    = fail2ban@bitrealm.dev
+mta       = mail
+#action    = %(action_mwl)s
+action = %(action_)s
+         mail-buffered[name=jellyfin, dest="nas@bitrealm.dev", sender="fail2ban@bitrealm.dev", sendername="Fail2Ban"]

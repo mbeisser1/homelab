@@ -24,7 +24,7 @@ dist/
 /site/
 
 # MkDocs staged downloads (auto-generated in CI)
-docs/_downloads/
+/docs/_downloads/
 
 # OS / editor files
 .DS_Store
@@ -39,3 +39,18 @@ Thumbs.db
 # pre-commit / formatting caches
 .pre-commit/
 .black/
+
+# Ignore compiled Postfix maps (in repo under etc/postfix)
+etc/postfix/*.db
+
+# Ignore Postfix password maps (secrets)
+etc/postfix/sasl_passwd
+etc/postfix/sasl_passwd.db
+
+# Ignore mail logs (if ever copied in)
+var/log/mail*
+var/log/fail2ban.log
+
+# Ignore temporary/lock files
+*.lock
+*.tmp
