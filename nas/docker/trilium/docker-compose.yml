@@ -1,0 +1,45 @@
+# docker-compose.yml — Trilium Notes
+# Fits your "no-ACL, group-hosted" model and /pool layout.
+# Host port 8180 chosen to avoid common clashes (Plex/Jellyfin/Nextcloud/Docmost).
+# Data, backup, and logs are split so you can exclude what you don't need in backups.
+
+services:
+  trilium:
+    container_name: trilium
+    image: triliumnext/trilium:stable     # Pin to a stable tag; switch to a version tag later if you prefer
+    restart: unless-stopped
+
+    # Map a **host** port that doesn't collide with your other apps.
+    # Inside the container Trilium listens on 8080; we present it on 8180 on the host.
+    ports:
+      - "8180:8080"                        # host:container
+
+    # Run as your user + the shared "hosted" group so bind-mounts are writable
+    # and inherit your 2775/664 policy. (1000 is typically your UID.)
+    environment:
+      - USER_UID=1000
+      - USER_GID=20250                     # <- your hosted GID
+
+      # Tell Trilium where everything lives **inside** the container.
+      # We bind these paths to host folders below.
+      - TRILIUM_DATA_DIR=/home/node/trilium-data
+      - TRILIUM_DOCUMENT_PATH=/home/node/trilium-data/document.db
+      - TRILIUM_CONFIG_INI_PATH=/home/node/trilium-data/config.ini
+      - TRILIUM_BACKUP_DIR=/home/node/trilium-backup
+      - TRILIUM_LOG_DIR=/home/node/trilium-log
+
+      # Optional: bind address/port inside container (normally not needed)
+      # - TRILIUM_BIND_ADDRESS=0.0.0.0
+      # - TRILIUM_PORT=8080
+
+    volumes:
+      # Bind-mounts:
+      # - All **live** data (document.db, config.ini) goes in /pool/.../data
+      # - Backups/logs split out so you can exclude them from your main NAS backup
+      - /pool/hosted/docker/trilium/data:/home/node/trilium-data
+      - /pool/hosted/docker/trilium/backup:/home/node/trilium-backup
+      - /pool/hosted/docker/trilium/log:/home/node/trilium-log
+
+      # Keep container time in sync with host for correct timestamps
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro

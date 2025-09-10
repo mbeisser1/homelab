@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  db:
+    image: mariadb:11
+    container_name: nextcloud-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlrootpassword
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: mysqlpassword
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks: [nextnet]
+
+  redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    networks: [nextnet]
+
+  app:
+    image: nextcloud:30-apache
+    container_name: nextcloud-app
+    restart: unless-stopped
+    depends_on: [db, redis]
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: mysqlpassword
+      REDIS_HOST: redis
+    volumes:
+      - appdata:/var/www/html
+    ports:
+      - "10.0.0.2:8081:80"   # binds only on your wg0 IP
+    networks: [nextnet]
+
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: nextcloud-onlyoffice
+    restart: unless-stopped
+    environment:
+      - JWT_ENABLED=true
+      - JWT_SECRET=xNwM4QmRjF2eZ6yV9H1uJtKdPgSlA7oBvXc3fYrLqWiUpEhTzGbNa0CsD5kOjR8w
+    ports:
+      - "10.0.0.2:8082:80"   # bind on wg0 only
+    networks: [nextnet]      
+
+networks:
+  nextnet:
+
+volumes:
+  dbdata:
+  redisdata:
+  appdata:

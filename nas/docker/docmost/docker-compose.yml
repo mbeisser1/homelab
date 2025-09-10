@@ -1,0 +1,108 @@
+
+# -------------------------------
+# Named volumes that BIND to your exact host paths.
+# This gives you Docker's volume UX (inspect/attach/reuse) while keeping files
+# in /pool/hosted/docker/docmost/... where you want them.
+# `docker compose down -v` removes the volume *record* but does NOT delete your host folders.
+# -------------------------------
+volumes:
+  docmost_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/docmost/data
+  pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/docmost/postgres
+  redisdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/docmost/redis
+
+services:
+  # --------------------------------------------------------------------
+  # One-shot helper that runs only on first bring-up to make PGDATA valid.
+  # Postgres REQUIRES:
+  #   - owner: postgres (container's built-in user)
+  #   - mode: 0700 (no group/world bits)
+  # We set that on the bound host directory and then this service never runs again.
+  # --------------------------------------------------------------------
+  pg_perms:
+    image: postgres:16-alpine
+    user: "0:0"
+    command: >
+      sh -lc 'chown -R $(id -u postgres):$(id -g postgres) /var/lib/postgresql/data &&
+              chmod 700 /var/lib/postgresql/data'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: "no"
+
+  # -------------------------------
+  # PostgreSQL database
+  # - Runs as the default "postgres" user (do NOT force your UID here).
+  # - Mounts the named volume "pgdata" which binds to your host path.
+  # - After pg_perms sets ownership/mode once, PG starts cleanly.
+  # -------------------------------
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: docmost
+      POSTGRES_USER: docmost
+      POSTGRES_PASSWORD: root
+      TZ: "America/New_York"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    depends_on:
+      pg_perms:
+        condition: service_completed_successfully
+
+  # -------------------------------
+  # Redis
+  # - Persists to /data (AOF/RDB) which is bound to your host path via "redisdata".
+  # - Redis can own its dir; no special 0700 requirement like PG.
+  # -------------------------------
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server","--appendonly","yes"]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  docmost:
+    container_name: docmost
+    image: docmost/docmost:latest
+    user: "1000:20250"  # effective runtime UID:GID
+    environment:
+      APP_URL: "http://172.16.46.24:3090"
+      APP_SECRET: "REPLACE_ME"  # rotate if previously exposed
+      DATABASE_URL: "postgresql://docmost:root@db:5432/docmost?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      TZ: "America/New_York"
+      USER_UID: "1000"     # mbeisser (docmost image ignores these; kept per your request)
+      USER_GID: "20250"    # hosted group
+    ports:
+      - "3090:3000"
+    restart: unless-stopped
+    volumes:
+      - docmost_storage:/app/data/storage
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - db
+      - redis
+
+# --------------------------------------------------------------------
+# Host-side expectations (for your reference; not executed by Compose):
+#   sudo mkdir -p /pool/hosted/docker/docmost/{storage,postgres,redis}
+#   sudo chgrp -R 20250 /pool/hosted/docker/docmost
+#   sudo find /pool/hosted/docker/docmost -type d -exec chmod 2775 {} \;
+#   sudo find /pool/hosted/docker/docmost -type f -exec chmod 0664 {} \;
+#   # pg_perms will tighten /postgres to 0700 and chown to the postgres UID.
+# --------------------------------------------------------------------
