@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: joplin-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: joplin
+      TZ: "${TZ}"
+    volumes:
+      - joplin_postgres:/var/lib/postgresql/data
+
+  joplin:
+    image: joplin/server:latest
+    container_name: joplin
+    depends_on:
+      - db
+    restart: unless-stopped
+    environment:
+      APP_PORT: 22300
+      APP_BASE_URL: ${APP_BASE_URL}
+      DB_CLIENT: pg
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DATABASE: joplin
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    ports:
+      - "127.0.0.1:22300:22300"
+    volumes:
+      - joplin_data:/var/lib/joplin
+
+volumes:
+  joplin_postgres:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/joplin/postgres
+  joplin_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/joplin/data

@@ -16,23 +16,7 @@ services:
     image: postgres:16-alpine
     user: "0:0"
     command: >
-      sh -lc 'chown -R $(id -u postgres):$(id -g postgres) /var/lib/postgresql/data &&
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-              chmod 700 /var/lib/postgresql/data'
+      sh -lc 'chown -R $(id -u postgres):$(id -g postgres) /var/lib/postgresql/data && chmod 700 /var/lib/postgresql/data'
     volumes:
       - wikijs_pgdata:/var/lib/postgresql/data
     restart: "no"
@@ -65,5 +49,6 @@ services:
       - "127.0.0.1:8280:3000"
     volumes:
       - wikijs_data:/wiki/data
+      - /pool/repo/local/git:/git   # mount host folder inside container
     depends_on:
       - db
