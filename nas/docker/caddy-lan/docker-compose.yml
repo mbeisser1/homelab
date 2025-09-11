@@ -1,0 +1,10 @@
+services:
+  caddy-lan:
+    image: caddy:2
+    container_name: caddy-lan
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /pool/hosted/docker/caddy-lan/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /pool/hosted/docker/caddy-lan/data:/data
+      - /pool/hosted/docker/caddy-lan/config:/config

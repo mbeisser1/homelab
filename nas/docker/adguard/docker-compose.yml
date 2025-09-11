@@ -1,0 +1,15 @@
+services:
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: adguard
+    restart: unless-stopped
+    network_mode: host # binds :53 UDP/TCP, :3000 setup UI
+    volumes:
+      - /pool/hosted/docker/adguard/work:/opt/adguardhome/work
+      - /pool/hosted/docker/adguard/conf:/opt/adguardhome/conf
+
+#Free up port 53 if needed (Ubuntu):
+#sudo sed -i 's/^#\?DNSStubListener=.*/DNSStubListener=no/' /etc/systemd/resolved.conf
+#sudo systemctl restart systemd-resolved
+#sudo rm -f /etc/resolv.conf
+#sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf

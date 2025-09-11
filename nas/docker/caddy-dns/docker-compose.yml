@@ -1,0 +1,15 @@
+services:
+  caddy-dns:
+    build:
+      context: /pool/repo/docker/caddy-dns
+      dockerfile: Dockerfile
+    container_name: caddy-dns
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - CADDY_ACME_DNS_WAIT=180
+    volumes:
+      - /pool/hosted/docker/caddy-dns/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /pool/hosted/docker/caddy-dns/data:/data
+      - /pool/hosted/docker/caddy-dns/config:/config

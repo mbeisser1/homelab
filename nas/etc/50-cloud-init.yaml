@@ -1,0 +1,8 @@
+network:
+  version: 2
+  ethernets:
+    eno1:
+      dhcp4: true
+      nameservers:
+      # 172.16... AdGuard NAS, 1.1... cloudflare
+      addresses: [172.16.46.24, 1.1.1.1]

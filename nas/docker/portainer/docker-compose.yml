@@ -1,0 +1,19 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:2.33.1 # or use :lts to track the LTS line
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9000:9000" # HTTP UI only on localhost
+      # - "127.0.0.1:8000:8000" # optional: Edge agent tunnel (if you use it)
+      # (do NOT publish 9443 when proxying with Caddy)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /pool/hosted/docker/portainer/data:/data
+    # security hardening knobs you can keep or drop:
+    read_only: false # must be false so /data is writable
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      org.opencontainers.image.title: "Portainer CE"
+      org.opencontainers.image.description: "Docker manager (UI on 9443)"

@@ -1,0 +1,16 @@
+services:
+  homarr:
+    image: ghcr.io/homarr-labs/homarr:latest
+    container_name: homarr
+    restart: unless-stopped
+    # bind HTTP only to localhost; Caddy will proxy it
+    ports:
+      - "127.0.0.1:7575:7575"
+    volumes:
+      # optional: Docker integration (shows containers on the dashboard)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # app data (configs, icons, etc.)
+      - /pool/hosted/docker/homarr/appdata:/appdata
+    environment:
+      # 64-hex chars from .env
+      SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY}

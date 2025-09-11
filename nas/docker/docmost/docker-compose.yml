@@ -1,4 +1,3 @@
-
 # -------------------------------
 # Named volumes that BIND to your exact host paths.
 # This gives you Docker's volume UX (inspect/attach/reuse) while keeping files
@@ -6,7 +5,7 @@
 # `docker compose down -v` removes the volume *record* but does NOT delete your host folders.
 # -------------------------------
 volumes:
-  docmost_storage:
+  docmost_data:
     driver: local
     driver_opts:
       type: none
@@ -24,7 +23,6 @@ volumes:
       type: none
       o: bind
       device: /pool/hosted/docker/docmost/redis
-
 services:
   # --------------------------------------------------------------------
   # One-shot helper that runs only on first bring-up to make PGDATA valid.
@@ -38,11 +36,25 @@ services:
     user: "0:0"
     command: >
       sh -lc 'chown -R $(id -u postgres):$(id -g postgres) /var/lib/postgresql/data &&
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
               chmod 700 /var/lib/postgresql/data'
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: "no"
-
   # -------------------------------
   # PostgreSQL database
   # - Runs as the default "postgres" user (do NOT force your UID here).
@@ -54,15 +66,14 @@ services:
     environment:
       POSTGRES_DB: docmost
       POSTGRES_USER: docmost
-      POSTGRES_PASSWORD: root
-      TZ: "America/New_York"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: "${TZ}"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
     depends_on:
       pg_perms:
         condition: service_completed_successfully
-
   # -------------------------------
   # Redis
   # - Persists to /data (AOF/RDB) which is bound to your host path via "redisdata".
@@ -70,28 +81,27 @@ services:
   # -------------------------------
   redis:
     image: redis:7.2-alpine
-    command: ["redis-server","--appendonly","yes"]
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redisdata:/data
     restart: unless-stopped
-
   docmost:
     container_name: docmost
     image: docmost/docmost:latest
-    user: "1000:20250"  # effective runtime UID:GID
+    user: "1000:20250" # effective runtime UID:GID
     environment:
-      APP_URL: "http://172.16.46.24:3090"
-      APP_SECRET: "REPLACE_ME"  # rotate if previously exposed
-      DATABASE_URL: "postgresql://docmost:root@db:5432/docmost?schema=public"
+      APP_URL: "${APP_URL}"
+      APP_SECRET: "${APP_SECRET}"
+      DATABASE_URL: "postgresql://docmost:${POSTGRES_PASSWORD}@db:5432/docmost?schema=public"
       REDIS_URL: "redis://redis:6379"
-      TZ: "America/New_York"
-      USER_UID: "1000"     # mbeisser (docmost image ignores these; kept per your request)
-      USER_GID: "20250"    # hosted group
+      TZ: "${TZ}"
+      USER_UID: "1000" # mbeisser (docmost image ignores these; kept per your request)
+      USER_GID: "20250" # hosted group
     ports:
-      - "3090:3000"
+      - "${DOCMOST_BIND}:${DOCMOST_PORT}:3000"
     restart: unless-stopped
     volumes:
-      - docmost_storage:/app/data/storage
+      - docmost_data:/app/data/storage
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:

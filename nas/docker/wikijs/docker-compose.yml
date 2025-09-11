@@ -1,0 +1,69 @@
+volumes:
+  wikijs_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/wikijs/data
+  wikijs_pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/wikijs/postgres
+services:
+  pg_perms:
+    image: postgres:16-alpine
+    user: "0:0"
+    command: >
+      sh -lc 'chown -R $(id -u postgres):$(id -g postgres) /var/lib/postgresql/data &&
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              chmod 700 /var/lib/postgresql/data'
+    volumes:
+      - wikijs_pgdata:/var/lib/postgresql/data
+    restart: "no"
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: wikijs
+      POSTGRES_USER: wikijs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: "${TZ}"
+    volumes:
+      - wikijs_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    depends_on:
+      pg_perms:
+        condition: service_completed_successfully
+  wikijs:
+    image: requarks/wiki:2
+    container_name: wikijs
+    restart: unless-stopped
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: wikijs
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_NAME: wikijs
+      TZ: "${TZ}"
+    ports:
+      - "127.0.0.1:8280:3000"
+    volumes:
+      - wikijs_data:/wiki/data
+    depends_on:
+      - db
