@@ -1,105 +1,221 @@
-import argparse
-import json
 import os
 import re
 import shutil
+import urllib.parse
 import zipfile
 from pathlib import Path
-
-STATE_FILE = ".html_zip_state.json"
-
-
-def save_state(processed: set[str]):
-    Path(STATE_FILE).write_text(json.dumps(list(processed)))
+from typing import List, Set, Tuple
 
 
-def load_state() -> set[str]:
-    if Path(STATE_FILE).exists():
-        return set(json.loads(Path(STATE_FILE).read_text()))
-    return set()
+class HTMLBatchExporter:
+    def __init__(self, input_dir: str, output_dir: str, max_size_mb: int = 250):
+        self.input_dir = Path(input_dir).resolve()
+        self.output_dir = Path(output_dir).resolve()
+        self.max_size_bytes = max_size_mb * 1024 * 1024
+        self.attachments_dir = self.input_dir / "attachments"
 
+    def normalize_path(self, path_str: str) -> Path:
+        """Smart path normalization handling URL encoding and separators"""
+        # URL decode first
+        decoded = urllib.parse.unquote(path_str)
 
-def all_html_files(root: Path):
-    for dirpath, _, files in os.walk(root):
-        for f in files:
-            if f.lower().endswith(".html"):
-                yield Path(dirpath) / f
+        # Normalize separators
+        normalized = decoded.replace("\\", "/")
 
+        # Remove leading ./ or .\
+        normalized = re.sub(r"^\.?[\\/]", "", normalized)
 
-def collect_assets(html_path: Path, root: Path):
-    assets = set()
-    content = html_path.read_text(encoding="utf-8", errors="ignore")
-    for match in re.finditer(
-        r"""(?:src|href)\s*=\s*["'](.*?)["']""", content, flags=re.I
-    ):
-        raw = match.group(1)
-        raw = raw.replace("\\", "/")  # <-- normalise slashes
-        if raw.startswith(("http://", "https://", "data:", "#")):
-            continue
-        abs_path = (html_path.parent / raw).resolve()
-        try:
-            assets.add(abs_path.relative_to(root.resolve()))
-        except ValueError:
-            continue
-    return assets
+        return Path(normalized)
 
+    def extract_attachment_paths(self, html_content: str) -> Set[Path]:
+        """Extract and normalize attachment paths from HTML content"""
+        attachments = set()
 
-def build_zip(root: Path, html_list: list[Path], assets: set, zip_path: Path):
-    temp = Path("_tmp")
-    if temp.exists():
-        shutil.rmtree(temp)
-    temp.mkdir()
+        # Comprehensive regex for src/href attributes
+        patterns = [
+            r'<[^>]+(?:src|href)\s*=\s*["\']([^"\']+)["\'][^>]*>',
+            r'url\(["\']?([^"\']+)["\']?\)',
+            r'poster\s*=\s*["\']([^"\']+)["\']',  # for video poster
+            r'data-src\s*=\s*["\']([^"\']+)["\']',  # for lazy-loaded images
+        ]
 
-    def copy(rel: Path):
-        src = root / rel
-        dst = temp / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if src.is_file():
-            shutil.copy2(src, dst)
+        for pattern in patterns:
+            matches = re.findall(pattern, html_content, re.IGNORECASE)
+            for match in matches:
+                path = self.normalize_path(match)
 
-    for h in html_list:
-        copy(h.relative_to(root))
-    for a in assets:
-        copy(a)
+                # Check if it's a local attachment
+                if not self.is_external_url(str(path)):
+                    # Resolve against input directory
+                    full_path = (self.input_dir / path).resolve()
 
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for p in temp.rglob("*"):
-            if p.is_file():
-                zf.write(p, p.relative_to(temp))
-    shutil.rmtree(temp)
+                    # Check if file exists (try variations)
+                    if self.find_existing_file(full_path):
+                        attachments.add(path)
+
+        return attachments
+
+    def is_external_url(self, url: str) -> bool:
+        """Check if URL is external (http, https, data:, etc.)"""
+        return bool(re.match(r"^(https?|data|ftp|mailto):", url, re.IGNORECASE))
+
+    def find_existing_file(self, path: Path) -> bool:
+        """Check if file exists, trying case variations"""
+        if path.exists():
+            return True
+
+        # Try case-insensitive search in parent directory
+        parent = path.parent
+        if parent.exists():
+            name_lower = path.name.lower()
+            for item in parent.iterdir():
+                if item.name.lower() == name_lower:
+                    return True
+
+        return False
+
+    def copy_file_with_structure(self, src_path: Path, dst_base: Path) -> int:
+        """Copy file maintaining directory structure"""
+        relative_path = src_path.relative_to(self.input_dir)
+        dst_path = dst_base / relative_path
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_path, dst_path)
+        return dst_path.stat().st_size
+
+    def resolve_attachment_path(self, attachment_path: Path) -> Path:
+        """Resolve attachment path to actual file"""
+        # Try direct path
+        full_path = (self.input_dir / attachment_path).resolve()
+        if self.find_existing_file(full_path):
+            return full_path
+
+        # Try with different separators
+        alt_path = Path(str(attachment_path).replace("/", os.sep))
+        full_alt = (self.input_dir / alt_path).resolve()
+        if self.find_existing_file(full_alt):
+            return full_alt
+
+        # Try case-insensitive in attachments directory
+        if self.attachments_dir.exists():
+            name = attachment_path.name
+            for root, dirs, files in os.walk(self.attachments_dir):
+                for file in files:
+                    if file.lower() == name.lower():
+                        return Path(root) / file
+
+        return None
+
+    def create_zip_archive(self, archive_dir: Path, archive_num: int) -> None:
+        """Create zip archive from directory"""
+        zip_path = self.output_dir / f"archive_{archive_num:03d}.zip"
+
+        with zipfile.ZipFile(
+            zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6
+        ) as zipf:
+            for file_path in archive_dir.rglob("*"):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(archive_dir)
+                    zipf.write(file_path, arcname)
+
+        print(f"Created: {zip_path} ({zip_path.stat().st_size / (1024*1024):.1f}MB)")
+        shutil.rmtree(archive_dir)
+
+    def process_html_batch(self, html_files: List[Path], start_idx: int) -> int:
+        """Process batch with improved path handling"""
+        current_archive = 1
+        current_size = 0
+        current_archive_dir = self.output_dir / f"temp_archive_{current_archive:03d}"
+
+        processed_count = 0
+        missing_files = []
+
+        for i, html_file in enumerate(html_files[start_idx:], start=start_idx):
+            if current_size > self.max_size_bytes:
+                self.create_zip_archive(current_archive_dir, current_archive)
+                current_archive += 1
+                current_size = 0
+                current_archive_dir = (
+                    self.output_dir / f"temp_archive_{current_archive:03d}"
+                )
+
+            try:
+                with open(html_file, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+            except UnicodeDecodeError:
+                with open(html_file, "r", encoding="latin-1") as f:
+                    html_content = f.read()
+
+            attachments = self.extract_attachment_paths(html_content)
+
+            # Copy HTML file
+            html_size = self.copy_file_with_structure(html_file, current_archive_dir)
+            current_size += html_size
+
+            # Copy attachments with improved resolution
+            for attachment in attachments:
+                resolved_path = self.resolve_attachment_path(attachment)
+                if resolved_path:
+                    attachment_size = self.copy_file_with_structure(
+                        resolved_path, current_archive_dir
+                    )
+                    current_size += attachment_size
+                else:
+                    missing_files.append(str(attachment))
+
+            processed_count += 1
+
+            if processed_count % 10 == 0:
+                print(
+                    f"Processed {processed_count} files, current archive: {current_size / (1024*1024):.1f}MB"
+                )
+
+        if missing_files:
+            print(f"Warning: {len(missing_files)} attachments not found")
+
+        if current_size > 0:
+            self.create_zip_archive(current_archive_dir, current_archive)
+
+        return processed_count
+
+    def run(self):
+        """Main execution"""
+        print(f"Starting batch export...")
+        print(f"Input: {self.input_dir}")
+        print(f"Output: {self.output_dir}")
+        print(f"Max size: {self.max_size_bytes / (1024*1024):.0f}MB")
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        html_files = list(self.input_dir.rglob("*.html"))
+        print(f"Found {len(html_files)} HTML files")
+
+        if not html_files:
+            print("No HTML files found!")
+            return
+
+        processed = self.process_html_batch(html_files, 0)
+        print(f"Completed! Processed {processed} files")
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", type=Path, default=Path.cwd())
-    parser.add_argument("-o", "--output", default="trilium_part")
-    parser.add_argument("-n", "--count", type=int, default=50)
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Batch export HTML files and attachments to zip archives"
+    )
+    parser.add_argument("input_dir", help="Input directory containing HTML files")
+    parser.add_argument("output_dir", help="Output directory for zip archives")
+    parser.add_argument(
+        "--max-size",
+        type=int,
+        default=250,
+        help="Maximum size per archive in MB (default: 250)",
+    )
+
     args = parser.parse_args()
 
-    root = args.input.resolve()
-    done = load_state()
-    html_iter = (h for h in all_html_files(root) if str(h) not in done)
-    batch = []
-    assets = set()
-
-    for html in html_iter:
-        batch.append(html)
-        assets.update(collect_assets(html, root))
-        if len(batch) >= args.count:
-            zip_name = Path(f"{args.output}_{len(done)//args.count + 1}.zip")
-            build_zip(root, batch, assets, zip_name)
-            print(f"Created {zip_name}  ({len(batch)} HTML  {len(assets)} assets)")
-            done.update(str(h) for h in batch)
-            save_state(done)
-            batch.clear()
-            assets.clear()
-
-    if batch:
-        zip_name = Path(f"{args.output}_{len(done)//args.count + 1}.zip")
-        build_zip(root, batch, assets, zip_name)
-        print(f"Created final {zip_name}")
-        done.update(str(h) for h in batch)
-        save_state(done)
+    exporter = HTMLBatchExporter(args.input_dir, args.output_dir, args.max_size)
+    exporter.run()
 
 
 if __name__ == "__main__":
