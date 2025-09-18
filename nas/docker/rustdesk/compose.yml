@@ -1,0 +1,22 @@
+#hbbs → The broker/signaling service. It helps clients find each other.
+services:
+  hbbs:
+    container_name: hbbs
+    image: rustdesk/rustdesk-server:latest
+    command: hbbs
+    volumes:
+      - /pool/hosted/docker/rustdesk/data:/root
+    network_mode: "host"
+    depends_on:
+      - hbbr
+    restart: unless-stopped
+
+#hbbr → The relay service. It relays traffic if direct peer-to-peer connection fails.
+  hbbr:
+    container_name: hbbr
+    image: rustdesk/rustdesk-server:latest
+    command: hbbr
+    volumes:
+      - /pool/hosted/docker/rustdesk/data:/root
+    network_mode: "host"
+    restart: unless-stopped

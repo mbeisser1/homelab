@@ -14,18 +14,19 @@ services:
     # Run as your user + the shared "hosted" group so bind-mounts are writable
     # and inherit your 2775/664 policy. (1000 is typically your UID.)
     environment:
-      - USER_UID=1000
-      - USER_GID=20250 # <- your hosted GID
-      # Tell Trilium where everything lives **inside** the container.
-      # We bind these paths to host folders below.
-      - TRILIUM_DATA_DIR=/home/node/trilium-data
-      - TRILIUM_DOCUMENT_PATH=/home/node/trilium-data/document.db
-      - TRILIUM_CONFIG_INI_PATH=/home/node/trilium-data/config.ini
-      - TRILIUM_BACKUP_DIR=/home/node/trilium-backup
-      - TRILIUM_LOG_DIR=/home/node/trilium-log
-      # Optional: bind address/port inside container (normally not needed)
-      # - TRILIUM_BIND_ADDRESS=0.0.0.0
-      # - TRILIUM_PORT=8080
+      - .env
+      #- USER_UID=1000
+      #- USER_GID=20250 # <- your hosted GID
+      ## Tell Trilium where everything lives **inside** the container.
+      ## We bind these paths to host folders below.
+      #- TRILIUM_DATA_DIR=/home/node/trilium-data
+      #- TRILIUM_DOCUMENT_PATH=/home/node/trilium-data/document.db
+      #- TRILIUM_CONFIG_INI_PATH=/home/node/trilium-data/config.ini
+      #- TRILIUM_BACKUP_DIR=/home/node/trilium-backup
+      #- TRILIUM_LOG_DIR=/home/node/trilium-log
+      ## Optional: bind address/port inside container (normally not needed)
+      ## - TRILIUM_BIND_ADDRESS=0.0.0.0
+      ## - TRILIUM_PORT=8080
     volumes:
       # Bind-mounts:
       # - All **live** data (document.db, config.ini) goes in /pool/.../data
@@ -33,6 +34,8 @@ services:
       - /pool/hosted/docker/trilium/data:/home/node/trilium-data
       - /pool/hosted/docker/trilium/backup:/home/node/trilium-backup
       - /pool/hosted/docker/trilium/log:/home/node/trilium-log
+      - /pool/hosted/assets:/pool/hosted/assets:ro
+
       # Keep container time in sync with host for correct timestamps
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
