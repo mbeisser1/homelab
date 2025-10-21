@@ -2,7 +2,7 @@ services:
   jellyfin:
     image: jellyfin/jellyfin:2025102005
     container_name: jellyfin
-    user: ${JELLYFIN_USER}:${JELLYFIN_GROUP}
+    user: "${JELLYFIN_USER}:${JELLYFIN_GROUP}"
     group_add:
       - "${JELLYFIN_RENDER_GROUP}"
     ports:
@@ -22,4 +22,6 @@ services:
         source: /pool/media
         target: /media
         read_only: true
+    environment:
+      - TZ="${TZ}"
     restart: 'unless-stopped'
