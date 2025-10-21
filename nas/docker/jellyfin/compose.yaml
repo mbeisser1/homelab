@@ -1,0 +1,25 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:2025102005
+    container_name: jellyfin
+    user: ${JELLYFIN_USER}:${JELLYFIN_GROUP}
+    group_add:
+      - "${JELLYFIN_RENDER_GROUP}"
+    ports:
+      - 8096:8096/tcp
+      - 7359:7359/udp
+    devices:
+      # Map the following two:
+      # ls -la /dev/dri/by-path/
+      # lshw -C display
+      # Specify the renderer for transcoding, and card for some advanced features
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card1:/dev/dri/card1
+    volumes:
+      - /home/mbeisser/hosted/docker/jellyfin/config:/config
+      - /home/mbeisser/hosted/docker/jellyfin/cache:/cache      
+      - type: bind
+        source: /pool/media
+        target: /media
+        read_only: true
+    restart: 'unless-stopped'
