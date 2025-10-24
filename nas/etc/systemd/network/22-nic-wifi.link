@@ -1,0 +1,5 @@
+[Match]
+MACAddress=58:02:05:d4:84:4c
+
+[Link]
+Name=nic-wifi
