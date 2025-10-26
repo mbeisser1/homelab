@@ -5,6 +5,6 @@ services:
     ports:
       - "53:53/udp"
     volumes:
-      - /pool/hosted/docker/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
+      - /hosted/docker/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
     cap_add:
       - NET_ADMIN

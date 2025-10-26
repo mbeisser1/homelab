@@ -1,18 +1,19 @@
 services:
+  # Permissions must be 999:999
+  # Docker can't use the mergerfs (fuse) mount point. Use /mnt/volx/pool/hosted/docker/...
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: joplin-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: joplin
-      TZ: "${TZ}"
+      TZ: ${TZ}
     volumes:
       - joplin_postgres:/var/lib/postgresql/data
-
   joplin:
-    image: joplin/server:latest
+    image: joplin/server:3.4.3
     container_name: joplin
     depends_on:
       - db
@@ -27,20 +28,20 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
     ports:
-      - "127.0.0.1:22300:22300"
+      - 127.0.0.1:22300:22300
     volumes:
       - joplin_data:/var/lib/joplin
-
 volumes:
   joplin_postgres:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /pool/hosted/docker/joplin/postgres
+      device: /hosted/docker/joplin/postgres
   joplin_data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /pool/hosted/docker/joplin/data
+      device: /hosted/docker/joplin/data
+networks: {}
