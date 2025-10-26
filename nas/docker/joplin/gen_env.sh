@@ -37,13 +37,13 @@ done
 
 # 3. Fix ownerships
 # repo folder -> root:hosted
-sudo chown -R root:$APP_GROUP "$REPO_DIR"
-sudo chmod -R 775 "$REPO_DIR"
+#sudo chown -R root:$APP_GROUP "$REPO_DIR"
+#sudo chmod -R 775 "$REPO_DIR"
 
 # data folder -> mbeisser:hosted with sticky bit
-sudo chown -R $APP_USER:$APP_GROUP "$DATA_DIR"
-sudo chmod -R 2775 "$DATA_DIR"
+#sudo chown -R $APP_USER:$APP_GROUP "$DATA_DIR"
+#sudo chmod -R 2775 "$DATA_DIR"
 
-echo "✅ Environment, repo, and data directories prepared."
-echo "   Repo:  $REPO_DIR (root:$APP_GROUP)"
-echo "   Data:  $DATA_DIR ($APP_USER:$APP_GROUP, sticky group bit)"
+#echo "✅ Environment, repo, and data directories prepared."
+#echo "   Repo:  $REPO_DIR (root:$APP_GROUP)"
+#echo "   Data:  $DATA_DIR ($APP_USER:$APP_GROUP, sticky group bit)"

@@ -1,0 +1,43 @@
+services:
+  dnsmasq:
+    image: jpillora/dnsmasq
+    container_name: dnsmasq
+    ports:
+      - "53:53/udp"
+    volumes:
+      - /pool/hosted/docker/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
+    cap_add:
+      - NET_ADMIN
+
+  caddy:
+    image: ghcr.io/caddybuilds/caddy-cloudflare:2.10.2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - /pool/hosted/docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    depends_on:
+      - dnsmasq
+
+volumes:
+  caddy_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/caddy/data
+  caddy_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /pool/hosted/docker/caddy/config

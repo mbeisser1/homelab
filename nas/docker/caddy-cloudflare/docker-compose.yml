@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: serfriz/caddy-cloudflare-ddns-crowdsec-geoip-security-dockerproxy:2.10.2
+    container_name: caddy-cloudflare
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    environment:
+      # Cloudflare API Credentials
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+
+      # Cloudflare Dynamic DNS (optional)
+      #- CLOUDFLARE_EMAIL=your_email@example.com
+      #- CLOUDFLARE_ZONE_ID=your_zone_id
+      #- CLOUDFLARE_RECORD_ID=your_record_id
+      #- CLOUDFLARE_PROXIED=false
+
+      # CrowdSec Configuration
+      #- CROWDSEC_API_URL=http://crowdsec:8080
+      #- CROWDSEC_API_KEY=your_crowdsec_api_key
+
+      # GeoIP Configuration
+      #- GEOIP_ACCOUNT_ID=your_maxmind_account_id
+      #- GEOIP_LICENSE_KEY=your_maxmind_license_key
+
+    extra_hosts:
+      - "host.docker.internal:192.168.50.100"
+    volumes:
+      - /pool/hosted/docker/caddy-cloudflare/config/Caddyfile:/etc/caddy/Caddyfile
+      - /pool/hosted/docker/caddy-cloudflare/data:/data
+      - /pool/hosted/docker/caddy-cloudflare/config/caddy:/config
+      - /pool/hosted/docker/caddy-cloudflare/logs:/var/log/caddy
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For Docker Proxy
+    networks:
+      - caddy_network
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    environment:
+      - COLLECTIONS=crowdsecurity/caddy crowdsecurity/http-cve
+      - GID=1000
+    volumes:
+      - /pool/hosted/docker/caddy-cloudflare/config/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+      - /pool/hosted/docker/caddy-cloudflare/data/crowdsec/db:/var/lib/crowdsec/data
+      - /pool/hosted/docker/caddy-cloudflare/data/crowdsec/config:/etc/crowdsec
+      - /pool/hosted/docker/caddy-cloudflare/logs:/var/log/caddy:ro
+    networks:
+      - caddy_network
+
+networks:
+  caddy_network:
+    driver: bridge

@@ -1,0 +1,10 @@
+services:
+  dnsmasq:
+    image: jpillora/dnsmasq
+    container_name: dnsmasq
+    ports:
+      - "53:53/udp"
+    volumes:
+      - /pool/hosted/docker/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf
+    cap_add:
+      - NET_ADMIN
