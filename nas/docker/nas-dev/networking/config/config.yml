@@ -1,0 +1,9 @@
+tunnel: bitrealm-cloudflare-tunnel
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: bitrealm.dev
+    service: http://nginx-pm:80
+  - hostname: "*.bitrealm.dev"
+    service: http://nginx-pm:80
+  - service: http_status:404

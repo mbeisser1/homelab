@@ -10,8 +10,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: joplin
       TZ: ${TZ}
+    ports:
+      - "5432:5432"
     volumes:
       - joplin_postgres:/var/lib/postgresql/data
+
   joplin:
     image: joplin/server:3.4.3
     container_name: joplin
@@ -20,7 +23,9 @@ services:
     restart: unless-stopped
     environment:
       APP_PORT: 22300
-      APP_BASE_URL: ${APP_BASE_URL}
+      # Need to include port if accessing locally
+      APP_BASE_URL: http://192.168.50.100:22300
+      #APP_BASE_URL: https://joplin.bitrealm.dev
       DB_CLIENT: pg
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DATABASE: joplin
@@ -28,7 +33,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
     ports:
-      - 127.0.0.1:22300:22300
+      - "22300:22300"
     volumes:
       - joplin_data:/var/lib/joplin
 volumes:
@@ -44,4 +49,4 @@ volumes:
       type: none
       o: bind
       device: /hosted/docker/joplin/data
-networks: {}
+#networks: {}

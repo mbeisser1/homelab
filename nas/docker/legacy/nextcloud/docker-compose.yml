@@ -36,7 +36,7 @@ services:
       - nextcloud_app:/var/www/html
     ports:
       - "127.0.0.1:8081:80"   # local for LAN Caddy
-      - "${WG_IP}:8081:80" # bind to WireGuard IP only
+        #  - "${WG_IP}:8081:80" # bind to WireGuard IP only
     networks: [nextnet]
 
   onlyoffice:
@@ -48,7 +48,7 @@ services:
       JWT_SECRET: ${ONLYOFFICE_JWT_SECRET}
     ports:
       - "127.0.0.1:8082:80"   # local for LAN Caddy
-      - "${WG_IP}:8082:80"
+        #  - "${WG_IP}:8082:80"
     networks: [nextnet]
 
 networks:
@@ -60,16 +60,16 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /pool/hosted/docker/nextcloud/db
+      device: /hosted/docker/nextcloud/db
   nextcloud_redis:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /pool/hosted/docker/nextcloud/redis
+      device: /hosted/docker/nextcloud/redis
   nextcloud_app:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /pool/hosted/docker/nextcloud/app
+      device: /hosted/docker/nextcloud/app
