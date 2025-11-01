@@ -4,31 +4,38 @@ networks:
     driver: bridge
 services:
   web:
-    image: "xwiki:stable-mariadb-tomcat"
-    container_name: xwiki-mariadb-tomcat-web
+    image: "xwiki:17.9-mariadb-tomcat"
+    container_name: xwiki
     depends_on:
       - db
     ports:
       - "8380:8080"
     environment:
-      - DB_USER=xwiki
-      - DB_PASSWORD=xwiki
-      - DB_HOST=xwiki-mariadb-db
+    - DB_USER=${DB_USER}
+    - DB_PASSWORD=${DB_PASSWORD}
+
+    # Can be either service name or container name.
+    # Docker Compose sets up an internal DNS that allows containers to find each other using:
+    # - The service name (db)
+    # - The container name (xwiki-mariadb-db)
+    - DB_HOST=db
     volumes:
       - xwiki-data:/usr/local/xwiki
+      #  The files in xwiki-config go in /usr/local/tomcat/webapps/ROOT/WEB-INF/
+      - ./xwiki-config:/usr/local/tomcat/webapps/ROOT/WEB-INF      
     networks:
       - bridge
   db:
     image: "mariadb:11.6"
-    container_name: xwiki-mariadb-db
+    container_name: xwiki-db
     volumes:
       - mariadb-data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
-      - MYSQL_ROOT_PASSWORD=xwiki
-      - MYSQL_USER=xwiki
-      - MYSQL_PASSWORD=xwiki
-      - MYSQL_DATABASE=xwiki
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=xwiki      
     command:
       - "--character-set-server=utf8mb4"
       - "--collation-server=utf8mb4_bin"
@@ -36,5 +43,5 @@ services:
     networks:
       - bridge
 volumes:
-  mariadb-data: {}
-  xwiki-data: {}
+  mariadb-data: 
+  xwiki-data: 

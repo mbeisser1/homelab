@@ -1,9 +1,14 @@
-tunnel: bitrealm-cloudflare-tunnel
-credentials-file: /etc/cloudflared/credentials.json
+#tunnel: bitrealm-cloudflare-tunnel
+#credentials-file: /etc/cloudflared/credentials.json
+#
+#ingress:
+#  - hostname: bitrealm.dev
+#    service: http://nginx-pm:80
+#  - hostname: "*.bitrealm.dev"
+#    service: http://nginx-pm:80
+#  - service: http_status:404
 
 ingress:
-  - hostname: bitrealm.dev
-    service: http://nginx-pm:80
-  - hostname: "*.bitrealm.dev"
-    service: http://nginx-pm:80
+  - hostname: xwiki.bitrealm.dev
+    service: http://192.168.50.100
   - service: http_status:404

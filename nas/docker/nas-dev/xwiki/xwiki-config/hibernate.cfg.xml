@@ -1,0 +1,10 @@
+<!-- Increase connection pool size for better throughput -->
+<property name="connection.pool_size">20</property>
+
+<!-- Enable second-level cache -->
+<property name="cache.use_second_level_cache">true</property>
+<property name="cache.provider_class">org.hibernate.cache.EhCacheProvider</property>
+
+<!-- Add these lines within the <session-factory> section -->
+<mapping resource="org/hibernate/cache/StandardQueryCache.hbm.xml"/>
+<mapping resource="org/hibernate/cache/UpdateTimestampsCache.hbm.xml"/>
