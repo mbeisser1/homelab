@@ -8,6 +8,7 @@
 #    service: http://nginx-pm:80
 #  - service: http_status:404
 
+# Allow cloudflare to resolve local ip
 ingress:
   - hostname: xwiki.bitrealm.dev
     service: http://192.168.50.100

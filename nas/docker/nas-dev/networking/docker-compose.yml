@@ -2,6 +2,10 @@ networks:
   internal-net:
     driver: bridge
 
+volumes:
+  nginx-proxy-manager_data:
+  nginx-proxy-manager_letsencrypt:
+
 services:
   cloudflare-tunnel:
     image: cloudflare/cloudflared:2025.10.0
@@ -16,9 +20,9 @@ services:
     networks:
       - internal-net
     depends_on:
-      - nginx-pm
+      - nginx-proxy-manager
 
-  nginx-pm:
+  nginx-proxy-manager:
     image: 'jc21/nginx-proxy-manager:2.12.6'
     container_name: nginx-proxy-manager
     restart: unless-stopped
@@ -27,8 +31,7 @@ services:
       - '8443:443'
       - '8081:81'
     volumes:
-      - ./data:/data
-      - ./letsencrypt:/etc/letsencrypt
-      # TODO:
-      #- npm_data:/data
-      #- npm_letsencrypt:/etc/letsencrypt
+      # - ./data:/data
+      # - ./letsencrypt:/etc/letsencrypt
+      - nginx-proxy-manager_data:/data
+      - nginx-proxy-manager_letsencrypt:/etc/letsencrypt
