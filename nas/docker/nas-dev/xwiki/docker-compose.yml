@@ -6,7 +6,6 @@ services:
   # The container that runs XWiki in Tomcat, with the appropriate JDBC driver (for postgres).
   web:
     image: "xwiki:${XWIKI_VERSION}-postgres-tomcat"
-    #container_name: xwiki-postgres-tomcat-web
     container_name: xwiki
     depends_on:
       db:
@@ -21,13 +20,15 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_DATABASE=${DB_DATABASE}
       - DB_HOST=db
+
+      # Reverse proxy support
+      - TOMCAT_ENABLE_REMOTEIPVALVE=true
+
       # JVM tuning
-      #- JAVA_OPTS=-Xms2g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+ExplicitGCInvokesConcurrent -Dfile.encoding=UTF-8
-      - JAVA_OPTS=-Xms2g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+ExplicitGCInvokesConcurrent -XX:+AlwaysPreTouch -XX:+UseStringDeduplication -Dfile.encoding=UTF-8
+      #- JAVA_OPTS=-Xms2g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ParallelRefProcEnabled -XX:+ExplicitGCInvokesConcurrent -XX:+AlwaysPreTouch -XX:+UseStringDeduplication -Dfile.encoding=UTF-8
     volumes:
-      - /pool/hosted/docker/xwiki/web:/usr/local/xwiki
-      - /pool/repo/docker/xwiki/config/hibernate.cfg.xml:/usr/local/xwiki/webapps/xwiki/WEB-INF/hibernate.cfg.xml:ro
-      - /pool/repo/docker/xwiki/config/xwiki.properties:/usr/local/xwiki/data/xwiki.properties:ro
+      - /hosted/docker/xwiki/web:/usr/local/xwiki
+      #- /hosted/docker/xwiki2/config/hibernate.cfg.xml:/usr/local/tomcat/webapps/ROOT/WEB-INF/hibernate.cfg.xml
     networks:
       - bridge
 
@@ -36,20 +37,23 @@ services:
     image: "postgres:17"
     container_name: xwiki-db
     environment:
-      #- POSTGRES_ROOT_PASSWORD=${POSTGRES_ROOT_PASSWORD}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_DB=${DB_DATABASE}
       - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale-provider=builtin --locale=C.UTF-8
+      #- POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
-      - /pool/hosted/docker/xwiki/db:/var/lib/postgresql/data
-      - /pool/repo/docker/xwiki/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+      - /hosted/docker/xwiki/db:/var/lib/postgresql/data
+      #- /hosted/docker/xwiki2/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      #- /hosted/docker/xwiki/config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro      
+    #command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     #command: ["postgres", "-c", "listen_addresses=*"]
     networks:
       - bridge
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U xwiki -d xwiki"]
+      #test: ["CMD", "wget", "--spider", "http://localhost:8080/"]
       interval: 10s
       timeout: 5s
       retries: 5
+        #start_period: 120s  # Critical: Gives XWiki 2 minutes to initialize
