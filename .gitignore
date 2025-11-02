@@ -54,3 +54,20 @@ var/log/fail2ban.log
 # Ignore temporary/lock files
 *.lock
 *.tmp
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.env*.secret
+
+# Build & Output Directories
+dist/
+build/
+out/
+.next/
+*.egg-info/
+
+# Docker & Volumes
+volumes/
+.docker/
