@@ -4,26 +4,33 @@ services:
     container_name: jellyfin
     user: ${JELLYFIN_USER}:${JELLYFIN_GROUP}
     group_add:
-      - ${JELLYFIN_RENDER_GROUP}
+      - "${JELLYFIN_RENDER_GROUP}"
+      - "${JELLYFIN_VIDEO_GROUP}"
     ports:
       - 8096:8096/tcp
-        #  - 8920:8920/tcp
-      - 7359:7359/udp
+      - 7359:7359/udp # Lan discovery
     devices:
       # Map the following two:
       # ls -la /dev/dri/by-path/
       # lshw -C display
       # Specify the renderer for transcoding, and card for some advanced features
-      - /dev/dri/renderD128:/dev/dri/renderD128
-      - /dev/dri/card1:/dev/dri/card1
+      # - /dev/dri/renderD128:/dev/dri/renderD128
+      # - /dev/dri/card1:/dev/dri/card1
+      - "/dev/dri:/dev/dri"          
     volumes:
-      - /hosted/docker/jellyfin/config:/config
-      - /hosted/docker/jellyfin/cache:/cache
+      - ./config:/config
+      - ./cache:/cache
       - type: bind
         source: /pool/media
         target: /media
         read_only: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true                
     environment:
-      - TZ="${TZ}"
+      - TZ=${TZ}
     restart: unless-stopped
-      #networks: {}
