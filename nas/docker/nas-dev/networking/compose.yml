@@ -1,6 +1,6 @@
-networks:
-  internal-net:
-    driver: bridge
+# networks:
+#   internal-net:
+#     driver: bridge
 
 volumes:
   nginx-proxy-manager_data:
@@ -17,8 +17,8 @@ services:
     volumes:
       - ./config:/etc/cloudflared
     command: tunnel --no-autoupdate run
-    networks:
-      - internal-net
+    # networks:
+    #   - internal-net
     depends_on:
       - nginx-proxy-manager
 
@@ -27,11 +27,9 @@ services:
     container_name: nginx-proxy-manager
     restart: unless-stopped
     ports:
-      - '8080:80'
-      - '8443:443'
-      - '8081:81'
+      - '80:80'
+      - '443:443'
+      - '81:81'
     volumes:
-      # - ./data:/data
-      # - ./letsencrypt:/etc/letsencrypt
       - nginx-proxy-manager_data:/data
       - nginx-proxy-manager_letsencrypt:/etc/letsencrypt
