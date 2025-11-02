@@ -1,17 +1,17 @@
 services:
   dockge:
-    image: louislam/dockge:1.5.0
+    image: louislam/dockge:latest
     container_name: dockge
     restart: unless-stopped
     ports:
-      # Host Port : Container Port
-      - 5001:5001
+      - 5005:5001
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/app/data
-      # Updated stacks directory path
-      - /home/mbeisser/docker_compose:/home/mbeisser/docker_compose
+      - dockge_data:/app/data
+      - /home/mbeisser/docker_compose/nas-dev:/opt/stacks
     environment:
-      # Updated to match your stacks directory
-      - DOCKGE_STACKS_DIR=/home/mbeisser/docker_compose
+      - DOCKGE_STACKS_DIR=/opt/stacks
+      - DOCKGE_ENABLE_CONSOLE=true
+volumes:
+  dockge_data: null
 networks: {}
