@@ -1,7 +1,7 @@
-version: '2'
-networks:
-  bridge:
-    driver: bridge
+# version: '2'
+# networks:
+#   bridge:
+#     driver: bridge
 services:
   web:
     image: "xwiki:17.9-mariadb-tomcat"
@@ -21,10 +21,11 @@ services:
     - DB_HOST=db
     volumes:
       - xwiki-data:/usr/local/xwiki
-      #  The files in xwiki-config go in /usr/local/tomcat/webapps/ROOT/WEB-INF/
-      - ./xwiki-config:/usr/local/tomcat/webapps/ROOT/WEB-INF      
-    networks:
-      - bridge
+      # - ./xwiki.properties:/usr/local/xwiki/xwiki.properties:ro
+      # - ./xwiki.cfg:/usr/local/xwiki/xwiki.cfg:ro
+      # - ./hibernate.cfg.xml:/usr/local/xwiki/hibernate.cfg.xml:ro  
+    # networks:
+    #   - bridge
   db:
     image: "mariadb:11.6"
     container_name: xwiki-db
@@ -40,8 +41,8 @@ services:
       - "--character-set-server=utf8mb4"
       - "--collation-server=utf8mb4_bin"
       - "--explicit-defaults-for-timestamp=1"
-    networks:
-      - bridge
+    # networks:
+    #   - bridge
 volumes:
   mariadb-data: 
   xwiki-data: 
