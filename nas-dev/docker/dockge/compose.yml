@@ -8,7 +8,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - dockge_data:/app/data
-      - /home/mbeisser/docker_compose/nas-dev:/opt/stacks
+      - /home/mbeisser/docker_compose:/opt/stacks
     environment:
       - DOCKGE_STACKS_DIR=/opt/stacks
       - DOCKGE_ENABLE_CONSOLE=true
