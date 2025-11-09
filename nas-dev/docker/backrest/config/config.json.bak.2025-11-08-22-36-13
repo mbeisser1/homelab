@@ -1,0 +1,38 @@
+{
+  "modno": 1,
+  "version": 4,
+  "instance": "nas-dev-backrest",
+  "repos": [
+    {
+      "id": "docker-volumes",
+      "uri": "/repos",
+      "guid": "71d2ef87a1c0094b29c957325b1fbecb204624acbf41eff8623b53640034e946",
+      "password": "Retrieval4-Postal-Computer-Feel",
+      "prunePolicy": {
+        "schedule": {
+          "cron": "0 0 1 * *",
+          "clock": "CLOCK_LAST_RUN_TIME"
+        },
+        "maxUnusedPercent": 10
+      },
+      "checkPolicy": {
+        "schedule": {
+          "cron": "0 0 1 * *",
+          "clock": "CLOCK_LAST_RUN_TIME"
+        },
+        "readDataSubsetPercent": 0
+      },
+      "commandPrefix": {}
+    }
+  ],
+  "auth": {
+    "disabled": true
+  },
+  "sync": {
+    "identity": {
+      "keyId": "ecdsa.Ht24gc_uPC4m9wTRFhXtR64Ss_ZZRt-K6Gbd3C02SSU",
+      "ed25519priv": "-----BEGIN EC PRIVATE-----\nMHcCAQEEIJI0bjX8wJbmEToaYo1umU2lfCus3g3GCFYSsna0bCPXoAoGCCqGSM49\nAwEHoUQDQgAEnUikwqbHQJGYObpq8pb9GqBhYW3OLqAHsseiH3pKEOpsWED48p4D\n+qzkpvsD6/EfdnKIlvLDNdloBzCVdcn8NQ==\n-----END EC PRIVATE-----\n",
+      "ed25519pub": "-----BEGIN EC PUBLIC-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnUikwqbHQJGYObpq8pb9GqBhYW3O\nLqAHsseiH3pKEOpsWED48p4D+qzkpvsD6/EfdnKIlvLDNdloBzCVdcn8NQ==\n-----END EC PUBLIC-----\n"
+    }
+  }
+}

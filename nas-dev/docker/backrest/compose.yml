@@ -1,0 +1,73 @@
+version: "3.8"
+services:
+  backrest:
+    image: garethgeorge/backrest:v1.10
+    container_name: backrest
+    hostname: backrest
+    volumes:
+      - ./appdata/data:/data
+      - ./config:/config
+      - ./appdata/cache:/cache
+      - ./appdata/tmp:/tmp
+      - ./appdata/rclone:/root/.config/rclone # Mount for rclone config (needed when using rclone remotes)
+
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock # For stopping databases
+
+      - type: volume
+        source: dockge_dockge_data
+        target: /mnt/dockge_dockge_data
+        read_only: true
+      - type: volume
+        source: immich_immich-db
+        target: /mnt/immich_immich-db
+        read_only: true
+      - type: volume
+        source: networking_nginx-proxy-manager_data
+        target: /mnt/nginx-proxy-manager_data
+        read_only: true
+      - type: volume
+        source: networking_nginx-proxy-manager_letsencrypt
+        target: /mnt/nginx-proxy-manager_letsencrypt
+        read_only: true
+      - type: volume
+        source: xwiki_mariadb-data
+        target: /mnt/xwiki_mariadb-data
+        read_only: true
+      - type: volume
+        source: xwiki_xwiki-data
+        target: /mnt/xwiki_xwiki-data
+        read_only: true
+
+      # - /path/to/backup/data:/userdata  # Mount local paths to backup
+      # - /path/to/local/repos:/repos     # Mount local repos (optional for remote storage)
+      # Would not be used if I were backing up to cloud directly
+      - type: bind
+        source: /pool/archive/docker/volumes
+        target: /repos      
+    environment:
+      - BACKREST_DATA=/data
+      - BACKREST_CONFIG=/config/config.json
+      - XDG_DATA_HOME=/data
+      - XDG_CONFIG_HOME=/config
+      - XDG_CACHE_HOME=/cache
+      - TMPDIR=/tmp
+      - TZ=America/New_York
+    ports:
+      - "9898:9898"
+    restart: unless-stopped
+
+volumes:
+  dockge_dockge_data:
+    external: true
+  immich_immich-db:
+    external: true
+  networking_nginx-proxy-manager_data:
+    external: true
+  networking_nginx-proxy-manager_letsencrypt:
+    external: true
+  xwiki_mariadb-data:
+    external: true
+  xwiki_xwiki-data:
+    external: true

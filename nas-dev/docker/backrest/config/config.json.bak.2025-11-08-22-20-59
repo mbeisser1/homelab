@@ -1,0 +1,15 @@
+{
+  "modno": 1,
+  "version": 4,
+  "instance": "nas-dev-backrest",
+  "auth": {
+    "disabled": true
+  },
+  "sync": {
+    "identity": {
+      "keyId": "ecdsa.Ht24gc_uPC4m9wTRFhXtR64Ss_ZZRt-K6Gbd3C02SSU",
+      "ed25519priv": "-----BEGIN EC PRIVATE-----\nMHcCAQEEIJI0bjX8wJbmEToaYo1umU2lfCus3g3GCFYSsna0bCPXoAoGCCqGSM49\nAwEHoUQDQgAEnUikwqbHQJGYObpq8pb9GqBhYW3OLqAHsseiH3pKEOpsWED48p4D\n+qzkpvsD6/EfdnKIlvLDNdloBzCVdcn8NQ==\n-----END EC PRIVATE-----\n",
+      "ed25519pub": "-----BEGIN EC PUBLIC-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnUikwqbHQJGYObpq8pb9GqBhYW3O\nLqAHsseiH3pKEOpsWED48p4D+qzkpvsD6/EfdnKIlvLDNdloBzCVdcn8NQ==\n-----END EC PUBLIC-----\n"
+    }
+  }
+}
