@@ -3,11 +3,11 @@
 # Docker Compose Manager Script
 set -u  # Exit on undefined variable
 
-# Base directory containing docker-compose projects
+# Base directory containing docker compose projects
 BASE_DIR="${HOME}/docker_compose"
 
 # Array of projects to manage
-PROJECTS=("dockge" "jellyfin" "networking" "xwiki")
+PROJECTS=("dockge" "immich" "jellyfin" "networking" "xwiki")
 
 # Function to validate project directory
 validate_project() {
@@ -37,7 +37,7 @@ start_all() {
         echo "Starting $project..."
 
         if validate_project "$project_dir" "$project"; then
-            if cd "$project_dir" && docker-compose -f compose.yml up -d 2>&1; then
+            if cd "$project_dir" && docker compose -f compose.yml up -d 2>&1; then
                 echo "SUCCESS: $project started"
             else
                 echo "ERROR: Failed to start $project" >&2
@@ -68,7 +68,7 @@ stop_all() {
         echo "Stopping $project..."
 
         if validate_project "$project_dir" "$project"; then
-            if cd "$project_dir" && docker-compose -f compose.yml down 2>&1; then
+            if cd "$project_dir" && docker compose -f compose.yml down 2>&1; then
                 echo "SUCCESS: $project stopped"
             else
                 echo "ERROR: Failed to stop $project" >&2
