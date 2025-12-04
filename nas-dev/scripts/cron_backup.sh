@@ -1,6 +1,11 @@
 #!/bin/bash
 
-# every hour backrest runs back: copies to /pool/archive/docker/volumes
+# Every hour backrest runs back: copies to /pool/docker_archive
+
+if pgrep "rclone-filen" > /dev/null; then
+    echo "Is a backup still running? rclone-filen is already running, exiting."
+    exit 0
+fi
 
 echo "Starting backup"
 
@@ -13,8 +18,15 @@ echo "Starting snapraid sync"
 echo "rclone copy /pool/archive/ -> koofr-remote:/archive/"
 /usr/local/bin/rclone-filen -P copy /pool/archive/ koofr-remote:/archive/
 
-echo "rclone copy /pool/docker_archive/ -> koofr-remote:/docker_archive/"
-/usr/local/bin/rclone-filen -P copy /pool/docker_archive/ koofr-remote:/docker_archive/
+if pgrep "restic" > /dev/null; then
+    echo "Is Backrest copying files because restic is running. Skipping /pool/docker_archive -> remote backups"
+else
+    echo "rclone copy /pool/docker_archive/ -> filen-remote:/docker_archive/"
+    /usr/local/bin/rclone-filen -P copy /pool/docker_archive/ filen-remote:/docker_archive/
+
+    echo "rclone copy /pool/docker_archive/ -> koofr-remote:/docker_archive/"
+    /usr/local/bin/rclone-filen -P copy /pool/docker_archive/ koofr-remote:/docker_archive/
+fi
 
 # ------ Filen -----
 echo "rclone copy /pool/docs/ -> filen-remote:/docs/"
@@ -22,9 +34,6 @@ echo "rclone copy /pool/docs/ -> filen-remote:/docs/"
 
 echo "rclone copy /pool/archive/ -> filen-remote:/archive/"
 /usr/local/bin/rclone-filen -P copy /pool/archive/ filen-remote:/archive/
-
-echo "rclone copy /pool/docker_archive/ -> filen-remote:/docker_archive/"
-/usr/local/bin/rclone-filen -P copy /pool/docker_archive/ filen-remote:/docker_archive/
 # ------------------
 
 echo "Starting snapraid scrub"

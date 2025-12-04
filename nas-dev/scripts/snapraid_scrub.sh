@@ -14,7 +14,7 @@ LASTLINE=$(tail -n 1 "$LOG_FILE")
 
 if [ "$LASTLINE" == "No error detected." ]; then
 	# Run scrub
-	snapraid -p 5 scrub >"$SCRUB_LOG" 2>&1
+	snapraid -p 10 scrub >"$SCRUB_LOG" 2>&1
 	rtnstatus=$?
 
 	if [[ $rtnstatus -eq 0 ]]; then
