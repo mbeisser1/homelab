@@ -1,52 +1,122 @@
 # See /usr/share/postfix/main.cf.dist for a commented, more complete version
+# See http://www.postfix.org/COMPATIBILITY_README.html
 
+# =============================================================================
+# BASIC SETTINGS
+# =============================================================================
 
-# Debian specific:  Specifying a file name will cause the first
-# line of that file to be used as the name.  The Debian default
-# is /etc/mailname.
+# Postfix compatibility level
+compatibility_level = 3.9
+
+# Hostname - identifies this mail server
+myhostname = nas-dev
+
+# Domain name for this mail server
+mydomain = bitrealm.dev
+
+# Domain that locally-originated mail appears to come from
+# Using /etc/mailname for Debian/Ubuntu policy compliance
 myorigin = /etc/mailname
 
+# SMTP greeting banner (RFC requirement: must start with $myhostname)
 smtpd_banner = $myhostname ESMTP $mail_name (Ubuntu)
-biff = no
 
-# appending .domain is the MUA's job.
-append_dot_mydomain = no
-
-# Uncomment the next line to generate "delayed mail" warnings
-#delay_warning_time = 4h
-
-readme_directory = no
-
-# See http://www.postfix.org/COMPATIBILITY_README.html -- default to 3.6 on
-# fresh installs.
-compatibility_level = 3.6
-
-
-
-# TLS parameters
-smtpd_tls_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
-smtpd_tls_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
-smtpd_tls_security_level=may
-
-smtp_tls_CApath=/etc/ssl/certs
-smtp_tls_security_level = encrypt
-smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
-
-
-smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination
-myhostname = nas.bitrealm.dev
-mydomain = bitrealm.dev
-alias_maps = hash:/etc/aliases
-alias_database = hash:/etc/aliases
-mydestination = $myhostname, localhost.$mydomain, localhost, nas
-relayhost = [smtp.fastmail.com]:587
-mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
-mailbox_size_limit = 0
-recipient_delimiter = +
-inet_interfaces = all
+# IP protocols to use: ipv4, ipv6, or all
 inet_protocols = all
+
+# =============================================================================
+# NETWORK AND INTERFACE SETTINGS
+# =============================================================================
+
+# Listen on loopback only (send-only configuration, more secure)
+# Change to "all" only if you need to receive mail from external sources
+inet_interfaces = loopback-only
+
+# Trusted SMTP clients (only localhost for send-only setup)
+mynetworks_style = host
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+
+# =============================================================================
+# DESTINATION AND DELIVERY SETTINGS
+# =============================================================================
+
+# Domains that this machine considers itself the final destination for
+# Keep minimal for relay-only setup
+mydestination = localhost.$mydomain, localhost
+
+# Maximum size of a user mailbox (0 = no limit)
+mailbox_size_limit = 0
+
+# External command for mailbox delivery (unset for default)
+mailbox_command = 
+
+# Separator between user name and address extension (user+foo@domain)
+recipient_delimiter = +
+
+# =============================================================================
+# FASTMAIL RELAY CONFIGURATION
+# =============================================================================
+
+# Route all outgoing mail through Fastmail SMTP server
+relayhost = [smtp.fastmail.com]:587
+
+# Enable SMTP authentication for relay
 smtp_sasl_auth_enable = yes
 smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
 smtp_sasl_security_options = noanonymous
+
+# Force TLS encryption for outgoing mail
 smtp_use_tls = yes
+smtp_tls_security_level = encrypt
+
+# List of CAs for SMTP Client to trust
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+
+# SMTP Client TLS session cache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+# =============================================================================
+# SMTP SERVER (INBOUND) SETTINGS
+# =============================================================================
+
+# SMTP server RSA key and certificate in PEM format
+smtpd_tls_key_file = /etc/ssl/private/ssl-cert-snakeoil.key
+smtpd_tls_cert_file = /etc/ssl/certs/ssl-cert-snakeoil.pem
+
+# SMTP Server TLS security level (may = opportunistic TLS)
+smtpd_tls_security_level = may
+
+# Relay restrictions (who can send mail through this server)
+smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination
+
+# =============================================================================
+# ALIAS AND LOCAL DELIVERY
+# =============================================================================
+
+# Alias database files (for redirecting local mail)
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+
+# Notify local biff service when new mail arrives (obsolete, disabled)
+biff = no
+
+# =============================================================================
+# CYRUS SASL CONFIGURATION
+# =============================================================================
+
+# Where to look for Cyrus SASL configuration files
+cyrus_sasl_config_path = /etc/postfix/sasl
+
+# =============================================================================
+# OPTIONAL SETTINGS
+# =============================================================================
+
+# Uncomment to generate "delayed mail" warnings after 4 hours
+#delay_warning_time = 4h
+
+# =============================================================================
+# SENDER ADDRESS REWRITING
+# =============================================================================
+
+# Rewrite sender addresses using generic table
 smtp_generic_maps = hash:/etc/postfix/generic

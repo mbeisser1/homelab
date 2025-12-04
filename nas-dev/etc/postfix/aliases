@@ -2,13 +2,15 @@
 # Default aliases to keep the system happy
 
 # Root/admin mail → your Fastmail address
-root: nas@bitrealm.dev
+root: nas-dev@bitrealm.dev
 
 # RFC-required postmaster → goes to root (which we already redirect above)
 postmaster: root
 
-# You can add others if you want (optional)
+# System accounts redirected to root
 abuse: root
 hostmaster: root
 webmaster: root
-mbeisser: nas@bitrealm.dev
+
+# Local user → Fastmail address
+mbeisser: nas-dev@bitrealm.dev

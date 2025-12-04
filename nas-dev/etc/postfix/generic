@@ -1,5 +1,14 @@
-root@nas                 root.nas@bitrealm.dev
-root@nas.bitrealm.dev    root.nas@bitrealm.dev
-mbeisser@nas             mbeisser.nas@bitrealm.dev
-mbeisser@nas.bitrealm.dev mbeisser.nas@bitrealm.dev
-@nas                     nas@bitrealm.dev
+# Sender address rewriting for nas-dev
+# Format: local_address rewritten_address
+
+# Root mail rewriting
+root@nas-dev                root.nas-dev@bitrealm.dev
+root@nas-dev.bitrealm.dev   root.nas-dev@bitrealm.dev
+
+# User mbeisser rewriting
+mbeisser@nas-dev              mbeisser.nas-dev@bitrealm.dev
+mbeisser@nas-dev.bitrealm.dev mbeisser.nas-dev@bitrealm.dev
+
+# Catch-all for nas-dev hostname
+@nas-dev                    nas-dev@bitrealm.dev
+@nas-dev.bitrealm.dev       nas-dev@bitrealm.dev
