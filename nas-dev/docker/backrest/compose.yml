@@ -44,7 +44,7 @@ services:
       # - /path/to/local/repos:/repos     # Mount local repos (optional for remote storage)
       # Would not be used if I were backing up to cloud directly
       - type: bind
-        source: /pool/archive/docker/volumes
+        source: /pool/docker_archive/volumes
         target: /repos      
     environment:
       - BACKREST_DATA=/data
