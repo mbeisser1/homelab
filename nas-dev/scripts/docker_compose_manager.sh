@@ -7,7 +7,7 @@ set -u  # Exit on undefined variable
 BASE_DIR="${HOME}/docker_compose"
 
 # Array of projects to manage
-PROJECTS=("dockge" "immich" "jellyfin" "networking" "xwiki")
+PROJECTS=("backrest" "dockge" "immich" "jellyfin" "networking" "xwiki")
 
 # Function to validate project directory
 validate_project() {
