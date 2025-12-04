@@ -1,101 +1,170 @@
 #!/bin/bash
+set -o pipefail
 
 # Backup script with integrated logging and emailing
 # Note: Every hour backrest runs back: copies to /pool/docker_archive
 
-LOG_FILE="/tmp/backup_complete_$(date +%Y%m%d_%H%M%S).log"
+#######################################
+# CONFIG
+#######################################
+
+BACKUP_NAME="cron backup"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="/tmp/backup_complete_${TIMESTAMP}.log"
+HTML_LOG_FILE="${LOG_FILE%.log}.html"
 MAIL_TO="root.nas-dev@bitrealm.dev"
+
 EXIT_CODE=0
 
-# Initialize log file, i.e. clear it
-> "$LOG_FILE"
+# Commands
+RCLONE="/usr/local/bin/rclone-filen"
+SNAPRAID="/usr/bin/snapraid"
 
+# Rclone settings
+RCLONE_LOG_LEVEL="INFO"   # DEBUG|INFO|NOTICE|ERROR etc.【2】【3】
+#RCLONE_COMMON_OPTS=(-P "--log-level=${RCLONE_LOG_LEVEL}")
+RCLONE_COMMON_OPTS=("--log-level=${RCLONE_LOG_LEVEL}")
+
+# Remotes
+REMOTE_KOOFR="koofr-remote"
+REMOTE_FILEN="filen-remote"
+
+#######################################
+# UTILS
+#######################################
+
+# Simple logger
+log() {
+    echo "$@" | tee -a "$LOG_FILE"
+}
+
+# Run a command with description and log everything
 run_and_log() {
     local description="$1"
-    local command="$2"
+    shift
 
-    echo "=== $description ===" | tee -a "$LOG_FILE"
-    eval "$command" 2>&1 | tee -a "$LOG_FILE"
+    log "=== ${description} ==="
+    # "$@" is the command + args
+    "$@" 2>&1 | tee -a "$LOG_FILE"
     local cmd_exit=${PIPESTATUS[0]}
-    echo "" | tee -a "$LOG_FILE"
+    log ""
 
     if [[ $cmd_exit -ne 0 ]]; then
-        echo "ERROR: $description failed with exit code $cmd_exit" | tee -a "$LOG_FILE"
+        log "ERROR: ${description} failed with exit code ${cmd_exit}"
         EXIT_CODE=1
     fi
 
-    return $cmd_exit
+    return "$cmd_exit"
+}
+
+# Wrapper around rclone copy with logging options
+rclone_copy() {
+    local description="$1"
+    local src="$2"
+    local dst="$3"
+
+    run_and_log "$description" \
+        "$RCLONE" "${RCLONE_COMMON_OPTS[@]}" copy "$src" "$dst"
 }
 
 send_email() {
     local subject="$1"
     local status="$2"
 
+    txt2html "$LOG_FILE" > "$HTML_LOG_FILE"
+
     if [[ $status -eq 0 ]]; then
         echo "Backup completed successfully. See attached log." |
-            mailx -a "$LOG_FILE" -s "$subject - SUCCESS" "$MAIL_TO"
-        rm -f "$LOG_FILE"
+            mailx -a "$HTML_LOG_FILE" -s "$subject - SUCCESS" "$MAIL_TO"
+        rm -f "$LOG_FILE" "$HTML_LOG_FILE"
     else
-        echo -e "Backup failed. See attached log for details." |
-            mailx -a "$LOG_FILE" -s "$subject - FAILED" "$MAIL_TO"
+        echo "Backup failed. See attached log for details." |
+            mailx -a "$HTML_LOG_FILE" -s "$subject - FAILED" "$MAIL_TO"
     fi
 }
 
-######################################################################################################
+fail_and_exit() {
+    local msg="$1"
+    log "$msg"
+    send_email "$BACKUP_NAME: $msg" 1
+    exit 1
+}
+
+#######################################
+# MAIN
+#######################################
+
+# Initialize log file, i.e. clear it
+> "$LOG_FILE"
 
 if pgrep -x "rclone-filen" > /dev/null; then
-    echo "rclone-filen is already running, exiting." | tee -a "$LOG_FILE"
-    send_email "Backup Duplicate Check" 1
+    log "rclone-filen is already running, exiting."
+    send_email "Backup already in progress" 1
     exit 0
 fi
 
-echo "Starting backup" | tee "$LOG_FILE"
-echo "Started at: $(date)" | tee -a "$LOG_FILE"
-echo "" | tee -a "$LOG_FILE"
+echo "Log file: $LOG_FILE"
+log "Starting backup"
+log "Started at: $(date)"
+log ""
 
-run_and_log "Restore koofr-remote:/docs/ -> /pool/docs/" \
-    "/usr/local/bin/rclone-filen -P copy koofr-remote:/docs/ /pool/docs/"
+# Restore docs from koofr
+rclone_copy \
+    "Restore ${REMOTE_KOOFR}:/docs/ -> /pool/docs/" \
+    "${REMOTE_KOOFR}:/docs/" \
+    "/pool/docs/"
 
-run_and_log "SnapRAID status" "snapraid status"
+# SnapRAID status
+run_and_log "SnapRAID status" "$SNAPRAID" status
 if [[ $EXIT_CODE -ne 0 ]]; then
-    echo "SnapRAID status failed. Something is wrong." | tee -a "$LOG_FILE"
-    send_email "cron backup: snapraid status returned an error, skipping cron backup" "$EXIT_CODE"
-    exit $EXIT_CODE
+    fail_and_exit "snapraid status returned an error, skipping cron backup"
 fi
 
-run_and_log "SnapRAID sync" "snapraid sync"
-# If snapraid sync failed, stop here and email
+# SnapRAID sync
+run_and_log "SnapRAID sync" "$SNAPRAID" sync
 if [[ $EXIT_CODE -ne 0 ]]; then
-    echo "SnapRAID sync failed. Skipping all rclone copies." | tee -a "$LOG_FILE"
-    send_email "cron backup: snapraid sync failed, skipping cron backup" "$EXIT_CODE"
-    exit $EXIT_CODE
+    fail_and_exit "snapraid sync failed, skipping all rclone copies"
 fi
 
-run_and_log "Copy /pool/archive -> koofr-remote:/archive/" \
-    "/usr/local/bin/rclone-filen -P copy /pool/archive/ koofr-remote:/archive/"
+# Archive -> koofr
+rclone_copy \
+    "Copy /pool/archive -> ${REMOTE_KOOFR}:/archive/" \
+    "/pool/archive/" \
+    "${REMOTE_KOOFR}:/archive/"
 
+# Docker archive copies (skipped if restic running)
 if pgrep -x "restic" > /dev/null; then
-    echo "Restic is running (check Backrest), skipping /pool/docker_archive remote backups." | tee -a "$LOG_FILE"
-    echo "" | tee -a "$LOG_FILE"
+    log "Restic is running (check Backrest), skipping /pool/docker_archive remote backups."
+    log ""
 else
-    run_and_log "Copy /pool/docker_archive -> filen-remote:/docker_archive/" \
-        "/usr/local/bin/rclone-filen -P copy /pool/docker_archive/ filen-remote:/docker_archive/"
+    rclone_copy \
+        "Copy /pool/docker_archive -> ${REMOTE_FILEN}:/docker_archive/" \
+        "/pool/docker_archive/" \
+        "${REMOTE_FILEN}:/docker_archive/"
 
-    run_and_log "Copy /pool/docker_archive -> koofr-remote:/docker_archive/" \
-        "/usr/local/bin/rclone-filen -P copy /pool/docker_archive/ koofr-remote:/docker_archive/"
+    rclone_copy \
+        "Copy /pool/docker_archive -> ${REMOTE_KOOFR}:/docker_archive/" \
+        "/pool/docker_archive/" \
+        "${REMOTE_KOOFR}:/docker_archive/"
 fi
 
-run_and_log "Copy /pool/docs/ -> filen-remote:/docs/" \
-    "/usr/local/bin/rclone-filen -P copy /pool/docs/ filen-remote:/docs/"
+# Docs -> filen
+rclone_copy \
+    "Copy /pool/docs/ -> ${REMOTE_FILEN}:/docs/" \
+    "/pool/docs/" \
+    "${REMOTE_FILEN}:/docs/"
 
-run_and_log "Copy /pool/archive/ -> filen-remote:/archive/" \
-    "/usr/local/bin/rclone-filen -P copy /pool/archive/ filen-remote:/archive/"
+# Archive -> filen
+rclone_copy \
+    "Copy /pool/archive/ -> ${REMOTE_FILEN}:/archive/" \
+    "/pool/archive/" \
+    "${REMOTE_FILEN}:/archive/"
 
-run_and_log "SnapRAID scrub" \
-    "snapraid scrub"
+# SnapRAID scrub
+run_and_log "SnapRAID scrub" "$SNAPRAID" scrub
 
-echo "Backup completed at: $(date)" | tee -a "$LOG_FILE"
+log "Backup completed at: $(date)"
 
-send_email "cron backup: status" "$EXIT_CODE"
+send_email "$BACKUP_NAME: status" "$EXIT_CODE"
 
-exit $EXIT_CODE
+exit "$EXIT_CODE"
