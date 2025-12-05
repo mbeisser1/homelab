@@ -12,15 +12,19 @@ BACKUP_NAME="cron backup"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="/tmp/backup_complete_${TIMESTAMP}.log"
 HTML_LOG_FILE="${LOG_FILE%.log}.html"
-MAIL_TO="root.nas-dev@bitrealm.dev"
+MAIL_TO="nas-dev@bitrealm.dev"
 
 EXIT_CODE=0
 
 # Commands
 RCLONE="/usr/local/bin/rclone-filen"
 SNAPRAID="/usr/bin/snapraid"
+MAILX="/usr/bin/mailx"
 
 # Rclone settings
+# Set rclone defaults for this script
+export RCLONE_DISABLE_HTTP2=true
+export RCLONE_TRANSFERS=16
 RCLONE_LOG_LEVEL="INFO"   # DEBUG|INFO|NOTICE|ERROR etc.【2】【3】
 #RCLONE_COMMON_OPTS=(-P "--log-level=${RCLONE_LOG_LEVEL}")
 RCLONE_COMMON_OPTS=("--log-level=${RCLONE_LOG_LEVEL}")
@@ -75,11 +79,11 @@ send_email() {
 
     if [[ $status -eq 0 ]]; then
         echo "Backup completed successfully. See attached log." |
-            mailx -a "$HTML_LOG_FILE" -s "$subject - SUCCESS" "$MAIL_TO"
+            MAILX -A "$HTML_LOG_FILE" -s "$subject - SUCCESS" "$MAIL_TO"
         rm -f "$LOG_FILE" "$HTML_LOG_FILE"
     else
         echo "Backup failed. See attached log for details." |
-            mailx -a "$HTML_LOG_FILE" -s "$subject - FAILED" "$MAIL_TO"
+            MAILX -A "$HTML_LOG_FILE" -s "$subject - FAILED" "$MAIL_TO"
     fi
 }
 
@@ -161,7 +165,7 @@ rclone_copy \
     "${REMOTE_FILEN}:/archive/"
 
 # SnapRAID scrub
-run_and_log "SnapRAID scrub" "$SNAPRAID" scrub
+#run_and_log "SnapRAID scrub" "$SNAPRAID" scrub
 
 log "Backup completed at: $(date)"
 
