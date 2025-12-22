@@ -20,6 +20,7 @@ EXIT_CODE=0
 RCLONE="/usr/local/bin/rclone-filen"
 SNAPRAID="/usr/bin/snapraid"
 MAILX="/usr/bin/mailx"
+TXT2HTML="/usr/bin/txt2html"
 
 # Rclone settings
 # Set rclone defaults for this script
@@ -75,15 +76,15 @@ send_email() {
     local subject="$1"
     local status="$2"
 
-    txt2html "$LOG_FILE" > "$HTML_LOG_FILE"
+    /usr/bin/txt2html "$LOG_FILE" > "$HTML_LOG_FILE"
 
     if [[ $status -eq 0 ]]; then
         echo "Backup completed successfully. See attached log." |
-            MAILX -A "$HTML_LOG_FILE" -s "$subject - SUCCESS" "$MAIL_TO"
+            "$MAILX" -A "$HTML_LOG_FILE" -s "$subject - SUCCESS" "$MAIL_TO"
         rm -f "$LOG_FILE" "$HTML_LOG_FILE"
     else
         echo "Backup failed. See attached log for details." |
-            MAILX -A "$HTML_LOG_FILE" -s "$subject - FAILED" "$MAIL_TO"
+            "$MAILX" -A "$HTML_LOG_FILE" -s "$subject - FAILED" "$MAIL_TO"
     fi
 }
 
