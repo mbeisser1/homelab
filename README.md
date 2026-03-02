@@ -1,5 +1,5 @@
 [Homelab Wiki](https://mbeisser1.github.io/homelab/)
-
+ 
 **Hardware:**
 - Ubuntu host OS (native Linux)
 - Intel Arc A310 - host display + Jellyfin transcoding
