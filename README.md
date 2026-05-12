@@ -19,6 +19,8 @@
   - [Hardware](#hardware)
     - [NAS-DEV (2025)](#nas-dev-2025)
     - [Parts](#parts)
+  - [Parts List](#parts-list)
+  - [Power Budget](#power-budget)
     - [inxi output](#inxi-output)
   - [GPU allocation](#gpu-allocation)
     - [Intel Arc A310](#intel-arc-a310)
@@ -80,218 +82,39 @@ Sparkle Intel Arc A310 Omni - 4GB GDDR6
 
 I put the 8 SATA drives in a snapraid pool with mergerfs
 
-<table>
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th>Category</th>
-      <th>Qty</th>
-      <th>Unit Price (USD)</th>
-      <th>Total Price (USD)</th>
-      <th>Vendor</th>
-      <th>Notes</th>
-      <th>Idle (W)</th>
-      <th>Typical (W)</th>
-      <th>Peak (W)</th>
-      <th>Power Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- Router -->
-    <tr>
-      <td>ASUS RT-BE88U WiFi 7 Router</td>
-      <td>Router</td>
-      <td>1</td>
-      <td>$290</td>
-      <td>$290</td>
-      <td>Amazon</td>
-      <td>802.11be, 802.11ac, 802.11ax<br>10 Gbit Eth x2 (WAN), RJ45 &amp; SFP+<br>2.5 Gbit Eth x4<br>1 Gbit Eth x4<br>Limited VLAN Support</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <!-- UPS -->
-    <tr>
-      <td>CyberPower CP1500PFCLCD UPS (1500VA/1000W)</td>
-      <td>UPS</td>
-      <td>1</td>
-      <td>$256</td>
-      <td>$256</td>
-      <td>Amazon</td>
-      <td>Probably overkill. True sine wave.<br>~200W load: ~15–25 min<br>~300W load: ~8–15 min<br>~500W load: ~5–10 min<br>~800W+ load: ~2–4 min</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <!-- Case -->
-    <tr>
-      <td>Rosewill THOR NAS Pro Full Tower Case</td>
-      <td>Case</td>
-      <td>1</td>
-      <td>$234</td>
-      <td>$234</td>
-      <td>Newegg</td>
-      <td>2+4 bay hot swap<br>Replace fans<br>Relocate middle bay so RTX 3090 has space</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <!-- Motherboard -->
-    <tr>
-      <td>ASRock X870 TAICHI CREATOR AM5 ATX Motherboard</td>
-      <td>Motherboard</td>
-      <td>1</td>
-      <td>$341</td>
-      <td>$341</td>
-      <td>Newegg</td>
-      <td>PCIe 8x8x4<br>10 Gbit Eth<br>5 Gbit Eth<br>WiFi 7<br>USB 4</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <!-- CPU -->
-    <tr>
-      <td>AMD Ryzen 9 7950X (16-core)</td>
-      <td>CPU</td>
-      <td>1</td>
-      <td>$478</td>
-      <td>$478</td>
-      <td>Amazon</td>
-      <td>170W TDP<br>250–300W peaks<br>Eco Mode: 105W<br>Official support: 4x2R DDR5-3600</td>
-      <td>25</td>
-      <td>105</td>
-      <td>300</td>
-      <td></td>
-    </tr>
-    <tr>
-      <td>Noctua NH-D15 chromax Black 140mm</td>
-      <td>CPU Cooler</td>
-      <td>1</td>
-      <td>$149</td>
-      <td>$149</td>
-      <td>Amazon</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <!-- RAM -->
-    <tr>
-      <td>NEMIX RAM 64GB (2x32GB) DDR5 5600MHz ECC UDIMM</td>
-      <td>RAM</td>
-      <td>2</td>
-      <td>$357</td>
-      <td>$714</td>
-      <td>Newegg</td>
-      <td>CL42<br>JEDEC: 5600, 5200<br>2x32 @ 5200<br>4x32 @ 4400 (no BIOS changes)</td>
-      <td>8</td>
-      <td>24</td>
-      <td>24</td>
-      <td></td>
-    </tr>
-    <!-- Graphics Cards -->
-    <tr>
-      <td>RTX 3090 Founders Edition</td>
-      <td>Graphics Card</td>
-      <td>1</td>
-      <td>$0</td>
-      <td>$0</td>
-      <td>Self</td>
-      <td>350W TDP</td>
-      <td>30</td>
-      <td>150</td>
-      <td>350</td>
-      <td></td>
-    </tr>
-    <tr>
-      <td>Sparkle Intel Arc A310 Omni 4GB GDDR6</td>
-      <td>2nd GPU (Transcoding)</td>
-      <td>1</td>
-      <td>$130</td>
-      <td>$130</td>
-      <td>Amazon</td>
-      <td>1-slot<br>4x HDMI<br>50W TDP</td>
-      <td>5</td>
-      <td>25</td>
-      <td>50</td>
-      <td></td>
-    </tr>
-    <!-- NVMe Drives -->
-    <tr>
-      <td>SAMSUNG 990 PRO SSD 4TB (M.2 2280)</td>
-      <td>NVMe Drive</td>
-      <td>1</td>
-      <td>$298</td>
-      <td>$298</td>
-      <td>Amazon</td>
-      <td>TBW: 2,400 — 5-year warranty<br>Proxmox LXC, VMs</td>
-      <td>2</td>
-      <td>5</td>
-      <td>9</td>
-      <td></td>
-    </tr>
-    <tr>
-      <td>SAMSUNG 990 PRO SSD 1TB (M.2 2280)</td>
-      <td>NVMe Drive</td>
-      <td>1</td>
-      <td>$96</td>
-      <td>$96</td>
-      <td>Amazon</td>
-      <td>Proxmox OS drive</td>
-      <td>1</td>
-      <td>3</td>
-      <td>6</td>
-      <td></td>
-    </tr>
-    <!-- Fans -->
-    <tr>
-      <td>ARCTIC P12 PWM PST (5-Pack)</td>
-      <td>Case Fans</td>
-      <td>1</td>
-      <td>$46</td>
-      <td>$46</td>
-      <td>Amazon</td>
-      <td></td>
-      <td>15</td>
-      <td>25</td>
-      <td>30</td>
-      <td>All fans (10 total)</td>
-    </tr>
-    <tr>
-      <td>Noctua NF-A12x25 PWM chromax.Black.swap (120mm)</td>
-      <td>Hot Swap Bay Fan</td>
-      <td>2</td>
-      <td>$40</td>
-      <td>$80</td>
-      <td>Amazon</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td>Noctua NF-A14 PWM chromax.Black (140mm)</td>
-      <td>Rear Exhaust Fan</td>
-      <td>1</td>
-      <td>$29</td>
-      <td>$29</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>
-  </tbody>
-</table>
+## Parts List
 
+| Item                                        | Category          | Qty | Total Price (USD) | Vendor | Notes                                                         |
+| :------------------------------------------ | :---------------- | --: | ----------------: | :----- | :------------------------------------------------------------ |
+| ASUS RT-BE88U WiFi 7 Router                 | Router            |   1 |               290 | Amazon | 802.11be, 10G RJ45 & SFP+ WAN, 2.5G ×4, 1G ×4, limited VLAN   |
+| CyberPower CP1500PFCLCD (1500 VA / 1000 W)  | UPS               |   1 |               256 | Amazon | True sine wave; ~8–15 min at 300 W load                       |
+| Rosewill THOR NAS Pro Full Tower            | Case              |   1 |               234 | Newegg | 2+4 bay hot swap; middle bay relocated for RTX 3090 clearance |
+| ASRock X870 TAICHI CREATOR AM5 ATX          | Motherboard       |   1 |               341 | Newegg | PCIe 8×8×4, 10G & 5G Eth, WiFi 7, USB4                        |
+| AMD Ryzen 9 7950X (16-core)                 | CPU               |   1 |               478 | Amazon | 170 W TDP; Eco Mode 105 W; DDR5-3600 official support         |
+| Noctua NH-D15 chromax.black (140 mm)        | CPU cooler        |   1 |               149 | Amazon |                                                               |
+| NEMIX 64 GB (2×32 GB) DDR5-5600 ECC UDIMM   | RAM               |   2 |               714 | Newegg | CL42; 2×32 @ 5200, 4×32 @ 4400 (no BIOS changes)              |
+| RTX 3090 Founders Edition                   | GPU               |   1 |                 0 | Self   | Primary GPU; 350 W TDP                                        |
+| Sparkle Intel Arc A310 Omni 4 GB GDDR6      | GPU (transcoding) |   1 |               130 | Amazon | 1-slot, 4× HDMI, 50 W TDP                                     |
+| Samsung 990 PRO 4 TB M.2 NVMe               | NVMe              |   1 |               298 | Amazon | Proxmox LXC & VMs; TBW 2,400; 5-yr warranty                   |
+| Samsung 990 PRO 1 TB M.2 NVMe               | NVMe              |   1 |                96 | Amazon | Proxmox OS drive                                              |
+| ARCTIC P12 PWM PST (5-pack)                 | Case fans         |   1 |                46 | Amazon | 10 fans total in build                                        |
+| Noctua NF-A12×25 PWM chromax.black (120 mm) | Hot-swap bay fan  |   2 |                80 | Amazon |                                                               |
+| Noctua NF-A14 PWM chromax.black (140 mm)    | Rear exhaust fan  |   1 |                29 | Amazon |                                                               |
+| **Total**                                   |                   |     |         **3,141** |        |                                                               |
 
+## Power Budget
+
+| Component                    | Idle (W) | Typical (W) | Peak (W) | Notes                               |
+| :--------------------------- | -------: | ----------: | -------: | :---------------------------------- |
+| AMD Ryzen 9 7950X            |       25 |         105 |      300 | Eco Mode enabled                    |
+| NEMIX DDR5 ECC RAM (4×32 GB) |        8 |          24 |       24 |                                     |
+| RTX 3090 Founders Edition    |       30 |         150 |      350 |                                     |
+| Sparkle Intel Arc A310       |        5 |          25 |       50 |                                     |
+| Samsung 990 PRO 4 TB NVMe    |        2 |           5 |        9 |                                     |
+| Samsung 990 PRO 1 TB NVMe    |        1 |           3 |        6 |                                     |
+| 20 TB SATA HDDs (×6)         |       40 |          64 |       80 | SnapRAID; 2 parity + 4 data         |
+| All fans (×10)               |       15 |          25 |       30 |                                     |
+| **Total (estimated)**        |  **126** |     **401** |  **849** | PSU headroom: HX1500i rated 1,500 W |
 
 <details>
 
