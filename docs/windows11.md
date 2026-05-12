@@ -9,7 +9,7 @@ Single flow: prepare the Ubuntu host for VFIO, create and install Windows 11 wit
 | CPU | AMD Ryzen 9 7950X |
 | Host display GPU | Intel Arc A310 |
 | Passthrough GPU | NVIDIA GeForce RTX 3090 (`10de:2204`, `10de:1aef`) |
-| Host OS | Ubuntu 25.04 or later |
+| Host OS | Ubuntu 25.10 (this write-up matches this host) |
 | Guest OS | Windows 11 |
 | Hypervisor | libvirt / QEMU |
 | Remote display | Looking Glass B7 (example config below) |
@@ -263,11 +263,15 @@ looking-glass-client
 
 ---
 
-## Part 6: VM audio via PipeWire (Ubuntu 25.04)
+## Part 6: `qemu.conf`, device ACLs, and VM audio (Ubuntu 25.10)
 
-QEMU’s PulseAudio backend talks to **`pipewire-pulse`**. The QEMU process must run as the **same user** that owns `/run/user/<UID>/pulse/native`.
+PipeWire still serves audio on **`pipewire-pulse`**, but **who runs QEMU** decides how the guest reaches that socket.
 
-### User services
+On this host, libvirt runs QEMU as **root** so you do not have to align the libvirt user with your login. That is convenient but **every VM has root-level access to host devices the process can open** — use only trusted disk images and lock down the host as you would any privileged service. A smaller blast-radius approach is to run QEMU as your desktop user (see below) so you do not need a hard-coded `PULSE_SERVER`.
+
+### PipeWire (desktop user)
+
+Ensure the user where you actually log in (the one whose session plays audio) has PipeWire running:
 
 ```bash
 systemctl --user enable --now pipewire.service pipewire-pulse.service
@@ -278,20 +282,39 @@ systemctl --user status pipewire.service pipewire-pulse.service
 pactl info
 ```
 
-`pactl info` should show a server on `/run/user/<UID>/pulse/native` and a name like **PulseAudio (on PipeWire …)**.
+`pactl info` should show a server on `/run/user/<UID>/pulse/native` and a name like **PulseAudio (on PipeWire …)**. Use that **UID** in the next section (`id -u`).
 
-### Run QEMU as your user
-
-Edit `/etc/libvirt/qemu.conf` and set (adjust user and primary group):
+### This host: `/etc/libvirt/qemu.conf`
 
 ```conf
-user = "mbeisser"
-group = "hosted"
+user = "root"
+group = "root"
+
+cgroup_device_acl = [
+  "/dev/null",
+  "/dev/full",
+  "/dev/zero",
+  "/dev/random",
+  "/dev/urandom",
+  "/dev/ptmx",
+  "/dev/kvm",
+  "/dev/kvmfr0"
+]
+
+env = ["PULSE_SERVER=unix:/run/user/1000/pulse/native"]
 ```
+
+- **`/dev/kvmfr0`** — Looking Glass **IVSHMEM** (`kvmfr`); QEMU must be allowed to open it. Drop this entry if you are not using LG’s `/dev/kvmfr0` node.
+- **`cgroup_device_acl`** — Extends which device nodes QEMU may open under cgroup rules; include `kvmfr0` when Looking Glass uses IVSHMEM on that node.
+- **`PULSE_SERVER`** — Points QEMU’s PulseAudio client at **your** session socket (`1000` = example; set to `id -u` for the user that runs PipeWire). Root-owned QEMU cannot use `$XDG_RUNTIME_DIR`, so the socket path is pinned explicitly.
 
 ```bash
 sudo systemctl restart libvirtd
 ```
+
+### Alternative: non-root QEMU (no `PULSE_SERVER` env)
+
+If you set `user` / `group` to your login and primary group (for example a user in `libvirt-qemu` / `kvm` patterns your distro documents), QEMU runs with your **UID** and can usually open `/run/user/<UID>/pulse/native` without `env`. You may still need **`/dev/kvmfr0`** in `cgroup_device_acl` when using Looking Glass.
 
 ### VM XML — audio device
 
@@ -311,9 +334,8 @@ Place **`<audio>` before `<video>`**. Example:
 
 ### How it fits together
 
-- `pipewire-pulse` exposes a PulseAudio-compatible socket.
-- QEMU, running as that user, can open the socket.
-- `type='pulseaudio'` in the guest sends audio to your normal desktop output.
+- With **root QEMU**, `PULSE_SERVER` forces the PulseAudio backend to talk to the **interactive user’s** PipeWire stack instead of root’s (which has no session socket).
+- **`pipewire-pulse`** still implements the server QEMU speaks to; the guest’s `type='pulseaudio'` audio goes out your normal desktop output.
 
 ---
 
