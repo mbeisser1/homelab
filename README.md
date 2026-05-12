@@ -80,6 +80,219 @@ Sparkle Intel Arc A310 Omni - 4GB GDDR6
 
 I put the 8 SATA drives in a snapraid pool with mergerfs
 
+<table>
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Category</th>
+      <th>Qty</th>
+      <th>Unit Price (USD)</th>
+      <th>Total Price (USD)</th>
+      <th>Vendor</th>
+      <th>Notes</th>
+      <th>Idle (W)</th>
+      <th>Typical (W)</th>
+      <th>Peak (W)</th>
+      <th>Power Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- Router -->
+    <tr>
+      <td>ASUS RT-BE88U WiFi 7 Router</td>
+      <td>Router</td>
+      <td>1</td>
+      <td>$290</td>
+      <td>$290</td>
+      <td>Amazon</td>
+      <td>802.11be, 802.11ac, 802.11ax<br>10 Gbit Eth x2 (WAN), RJ45 &amp; SFP+<br>2.5 Gbit Eth x4<br>1 Gbit Eth x4<br>Limited VLAN Support</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <!-- UPS -->
+    <tr>
+      <td>CyberPower CP1500PFCLCD UPS (1500VA/1000W)</td>
+      <td>UPS</td>
+      <td>1</td>
+      <td>$256</td>
+      <td>$256</td>
+      <td>Amazon</td>
+      <td>Probably overkill. True sine wave.<br>~200W load: ~15–25 min<br>~300W load: ~8–15 min<br>~500W load: ~5–10 min<br>~800W+ load: ~2–4 min</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <!-- Case -->
+    <tr>
+      <td>Rosewill THOR NAS Pro Full Tower Case</td>
+      <td>Case</td>
+      <td>1</td>
+      <td>$234</td>
+      <td>$234</td>
+      <td>Newegg</td>
+      <td>2+4 bay hot swap<br>Replace fans<br>Relocate middle bay so RTX 3090 has space</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <!-- Motherboard -->
+    <tr>
+      <td>ASRock X870 TAICHI CREATOR AM5 ATX Motherboard</td>
+      <td>Motherboard</td>
+      <td>1</td>
+      <td>$341</td>
+      <td>$341</td>
+      <td>Newegg</td>
+      <td>PCIe 8x8x4<br>10 Gbit Eth<br>5 Gbit Eth<br>WiFi 7<br>USB 4</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <!-- CPU -->
+    <tr>
+      <td>AMD Ryzen 9 7950X (16-core)</td>
+      <td>CPU</td>
+      <td>1</td>
+      <td>$478</td>
+      <td>$478</td>
+      <td>Amazon</td>
+      <td>170W TDP<br>250–300W peaks<br>Eco Mode: 105W<br>Official support: 4x2R DDR5-3600</td>
+      <td>25</td>
+      <td>105</td>
+      <td>300</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Noctua NH-D15 chromax Black 140mm</td>
+      <td>CPU Cooler</td>
+      <td>1</td>
+      <td>$149</td>
+      <td>$149</td>
+      <td>Amazon</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <!-- RAM -->
+    <tr>
+      <td>NEMIX RAM 64GB (2x32GB) DDR5 5600MHz ECC UDIMM</td>
+      <td>RAM</td>
+      <td>2</td>
+      <td>$357</td>
+      <td>$714</td>
+      <td>Newegg</td>
+      <td>CL42<br>JEDEC: 5600, 5200<br>2x32 @ 5200<br>4x32 @ 4400 (no BIOS changes)</td>
+      <td>8</td>
+      <td>24</td>
+      <td>24</td>
+      <td></td>
+    </tr>
+    <!-- Graphics Cards -->
+    <tr>
+      <td>RTX 3090 Founders Edition</td>
+      <td>Graphics Card</td>
+      <td>1</td>
+      <td>$0</td>
+      <td>$0</td>
+      <td>Self</td>
+      <td>350W TDP</td>
+      <td>30</td>
+      <td>150</td>
+      <td>350</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Sparkle Intel Arc A310 Omni 4GB GDDR6</td>
+      <td>2nd GPU (Transcoding)</td>
+      <td>1</td>
+      <td>$130</td>
+      <td>$130</td>
+      <td>Amazon</td>
+      <td>1-slot<br>4x HDMI<br>50W TDP</td>
+      <td>5</td>
+      <td>25</td>
+      <td>50</td>
+      <td></td>
+    </tr>
+    <!-- NVMe Drives -->
+    <tr>
+      <td>SAMSUNG 990 PRO SSD 4TB (M.2 2280)</td>
+      <td>NVMe Drive</td>
+      <td>1</td>
+      <td>$298</td>
+      <td>$298</td>
+      <td>Amazon</td>
+      <td>TBW: 2,400 — 5-year warranty<br>Proxmox LXC, VMs</td>
+      <td>2</td>
+      <td>5</td>
+      <td>9</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>SAMSUNG 990 PRO SSD 1TB (M.2 2280)</td>
+      <td>NVMe Drive</td>
+      <td>1</td>
+      <td>$96</td>
+      <td>$96</td>
+      <td>Amazon</td>
+      <td>Proxmox OS drive</td>
+      <td>1</td>
+      <td>3</td>
+      <td>6</td>
+      <td></td>
+    </tr>
+    <!-- Fans -->
+    <tr>
+      <td>ARCTIC P12 PWM PST (5-Pack)</td>
+      <td>Case Fans</td>
+      <td>1</td>
+      <td>$46</td>
+      <td>$46</td>
+      <td>Amazon</td>
+      <td></td>
+      <td>15</td>
+      <td>25</td>
+      <td>30</td>
+      <td>All fans (10 total)</td>
+    </tr>
+    <tr>
+      <td>Noctua NF-A12x25 PWM chromax.Black.swap (120mm)</td>
+      <td>Hot Swap Bay Fan</td>
+      <td>2</td>
+      <td>$40</td>
+      <td>$80</td>
+      <td>Amazon</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Noctua NF-A14 PWM chromax.Black (140mm)</td>
+      <td>Rear Exhaust Fan</td>
+      <td>1</td>
+      <td>$29</td>
+      <td>$29</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+
+
 <details>
 
 <summary>Linux hardware listing</summary>
@@ -215,7 +428,7 @@ Info:
 
 ## Previous setup
 
-I had 2 old machines; A NAS and a gaming PC. The power supply on the NAS died, and the only way to turn the PC on was to get down and press the power button conveniently hidden below the graphics card on the motherboard.
+I had 2 old machines; A NAS and a gaming PC. The power supply on the NAS died, and the only way to turn the gaming PC on was to get down and press the power button conveniently hidden below the graphics card on the motherboard.
 
 ### NAS (2015)
 
@@ -232,7 +445,7 @@ I had 2 old machines; A NAS and a gaming PC. The power supply on the NAS died, a
 | **GPU** | None |  |  |
 | **Total (without drives)** |  |  | 1,080  |
 
-The machine was a great introduction to data hoarding and self‑hosting. However, the system had no iGPU for Jellyfin transcoding, no space for a dedicated graphics card, some cooling issues, and then the power supply died. 
+The machine was a great introduction to data hoarding and self‑hosting. However, the system had no iGPU for Jellyfin transcoding, no space for a dedicated graphics card, some cooling issues, and then the power supply died.
 
 #### Hard drives
 
@@ -245,22 +458,24 @@ Recently replaced all drives.
 |**VOL3**  |20        |Western Digital |Red          |WDC WD201KFGX‑68BKJN0 |2022‑11‑28     |341        |
 |**PAR1**  |20        |Seagate         |Exos X20     |ST20000NM007D‑3DJ103  |2025‑08‑22     |240        |
 |**VOL4**  |20        |MDD             |NAS          |—                     |2025‑10‑15     |290        |
-|**Dead**  |20        |Seagate         |Exos X20     |ST20000NM007D‑3DJ103  |2025‑08‑22     |240        |
+|<EMPTY>   |          |                |             |—                     |               |           |
+|<EMPTY>   |          |                |             |—                     |               |           |
 |**PAR2**  |20        |Seagate         |IronWolf Pro |ST20000NE000‑3G5101   |2025‑01‑31     |290        |
-|**Total** |          |                |             |                      |               |**2,032**  |
+|**Total** |80        |                |             |                      |               |**1,792**  |
 
 ### Gaming PC (2016)
-| Component | Model / Details | Notes | Cost (USD) |
-|------------|-----------------|--------|-------------|
-| **Case** | [Corsair Obsidian Series 450D (CC‑9011049‑WW)](https://www.corsair.com/us/en/p/pc-cases/cc-9011049-ww/obsidian-series-450d-mid-tower-pc-case-cc-9011049-ww) | Mid‑tower ATX | 116 |
+
+| Component       | Model / Details | Notes | Cost (USD) |
+|-----------------|-----------------|--------|-------------|
+| **Case**        | [Corsair Obsidian Series 450D (CC‑9011049‑WW)](https://www.corsair.com/us/en/p/pc-cases/cc-9011049-ww/obsidian-series-450d-mid-tower-pc-case-cc-9011049-ww) | Mid‑tower ATX | 116 |
 | **Motherboard** | [ASUS Z170-A](https://www.amazon.com/dp/B012NH05UW)  | ATX, DDR4 | 155 |
-| **CPU** | [Intel Core i7‑6700K](https://www.amazon.com/dp/B012M8LXQW) | 4 cores / 8 threads, 4.0 GHz base (4.2 GHz boost), LGA 1151 | 340 |
-| **CPU Cooler** | [Cooler Master Hyper 212 EVO (RR-212E-20PK-R2)](https://www.amazon.com/dp/B005O65JXI) |  | 30 |
-| **RAM** | [G.SKILL Ripjaws V Series DDR4 RAM (F4-2400C15D-32GVR)](https://www.amazon.com/dp/B018OB5RB8) | (2x16GB) 32GB 2400MT/s  | 130 |
-| **GPU** | NVIDIA GeForce RTX 3090 | Founders Edition 24GB GDDR6   | 900 |
-| **GPU Cables** | [12P to 2× 8P PCIe adapter](https://www.amazon.com/dp/B08Z5QYMFR) | 300 cm | 20 |
-| **PSU** | [CORSAIR HX1000](https://www.amazon.com/dp/B07RX2DRXQ) | 1000 W, 80+ Platinum, fully modular | 170 |
-| **Wifi** | [ASUS Wi-Fi PCI Express Adapter (PCE-AC56)](https://www.amazon.com/dp/B00JNA337K) | | 63 |
-| **HDD** | [WD Blue 4TB - 5400 RPM SATA (WD40EZRZ)](https://www.amazon.com/dp/B013HNYV8I) | | 125 |
-| **Blu-Ray** | [LG WH16NS40 SATA 16x Blu-ray Disc Rewriter](https://www.amazon.com/dp/B00E7B08MS) | | 60  |
-| **Total** |  |  | 2109 |
+| **CPU**         | [Intel Core i7‑6700K](https://www.amazon.com/dp/B012M8LXQW) | 4 cores / 8 threads, 4.0 GHz base (4.2 GHz boost), LGA 1151 | 340 |
+| **CPU Cooler**  | [Cooler Master Hyper 212 EVO (RR-212E-20PK-R2)](https://www.amazon.com/dp/B005O65JXI) |  | 30 |
+| **RAM**         | [G.SKILL Ripjaws V Series DDR4 RAM (F4-2400C15D-32GVR)](https://www.amazon.com/dp/B018OB5RB8) | (2x16GB) 32GB 2400MT/s  | 130 |
+| **GPU**         | NVIDIA GeForce RTX 3090 | Founders Edition 24GB GDDR6   | 900 |
+| **GPU Cables**  | [12P to 2× 8P PCIe adapter](https://www.amazon.com/dp/B08Z5QYMFR) | 300 cm | 20 |
+| **PSU**         | [CORSAIR HX1000](https://www.amazon.com/dp/B07RX2DRXQ) | 1000 W, 80+ Platinum, fully modular | 170 |
+| **Wifi**        | [ASUS Wi-Fi PCI Express Adapter (PCE-AC56)](https://www.amazon.com/dp/B00JNA337K) | | 63 |
+| **HDD**         | [WD Blue 4TB - 5400 RPM SATA (WD40EZRZ)](https://www.amazon.com/dp/B013HNYV8I) | | 125 |
+| **Blu-Ray**     | [LG WH16NS40 SATA 16x Blu-ray Disc Rewriter](https://www.amazon.com/dp/B00E7B08MS) | | 60  |
+| **Total**       |  |  | 2109 |
