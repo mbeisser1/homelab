@@ -1,4 +1,4 @@
-## Overview
+# Postfix Setup
 
 This document outlines the steps to configure Postfix on Ubuntu 25.04 as a send-only mail relay using Fastmail SMTP for cron job notifications and system alerts.
 
@@ -23,6 +23,7 @@ This document outlines the steps to configure Postfix on Ubuntu 25.04 as a send-
 ### Primary Configuration
 
 **`/etc/postfix/main.cf`**
+
 - Configured relay through Fastmail SMTP (`smtp.fastmail.com:587`)
 - Enabled SASL authentication for SMTP relay
 - Enforced TLS encryption for outgoing mail
@@ -31,11 +32,13 @@ This document outlines the steps to configure Postfix on Ubuntu 25.04 as a send-
 - Added generic mapping for sender address rewriting
 
 **`/etc/mailname`**
+
 - Set to custom domain (`bitrealm.dev`)
 
 ### Authentication
 
 **`/etc/postfix/sasl_passwd`**
+
 - Contains Fastmail SMTP credentials
 - **Important:** Must use `@fastmail.com` email address for authentication (not custom domain)
 - Must use Fastmail App Password (not regular account password)
@@ -45,12 +48,14 @@ This document outlines the steps to configure Postfix on Ubuntu 25.04 as a send-
 ### Address Rewriting
 
 **`/etc/postfix/generic`**
+
 - Maps local sender addresses to custom domain addresses
 - Format: `local@hostname` → `user.hostname@domain.com`
 - Configured for both root and regular user accounts
 - Includes catch-all patterns for the hostname
 
 **`/etc/postfix/aliases`**
+
 - Redirects local system mail to external addresses
 - Maps `root` and other system accounts to monitored email addresses
 
@@ -70,6 +75,7 @@ After modifying configuration files, the following commands were run to build da
 ## Testing
 
 Tested configuration using:
+
 - `echo "test message" | mail -s "subject" recipient@domain.com`
 - Monitored logs: `sudo tail -f /var/log/mail.log`
 - Verified sender address rewriting in received emails
@@ -93,6 +99,7 @@ Tested configuration using:
 ## Result
 
 Successfully configured Postfix to:
+
 - Send all outgoing mail through Fastmail's SMTP relay
 - Rewrite sender addresses to use custom domain format (`user.hostname@bitrealm.dev`)
 - Forward local system mail to monitored external addresses

@@ -36,6 +36,7 @@ ip addr
 ```
 
 Note the following for your primary interface:
+
 - Interface name (e.g., `nic-10g`, `eth0`, `enp3s0`)
 - Current IP address
 - MAC address
@@ -140,6 +141,7 @@ ip addr show br0
 ```
 
 Expected output:
+
 - State: `UP`
 - An IP address on your network
 
@@ -150,6 +152,7 @@ ip addr show nic-10g
 ```
 
 Expected output:
+
 - No IP address on this interface
 - `master br0` shown in the output
 

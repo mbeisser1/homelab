@@ -1,6 +1,11 @@
-# bash
-```sh
-#.bashrc
+# New user setup
+
+This page lists the first steps needed when rebuilding a linux box.
+
+## Bash
+
+```bash
+# .bashrc
 HISTCONTROL=ignoreboth:erasedups
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
@@ -8,8 +13,9 @@ HISTSIZE=10000
 HISTFILESIZE=20000
 ```
 
-# sudo
-```sh
+## Sudo
+
+```bash
 sudo apt install neovim
 sudo update-alternatives --config editor
 
@@ -19,11 +25,12 @@ sudo visudo
 %sudo   ALL=(ALL:ALL) NOPASSWD:ALL
 ```
 
-# Groups
+## Groups
+
 The `hosted` group is needed for docker volumes, snapraid, and samba.
 The `docker` group is needed for docker.
 
-```
+```bash
 # Create group
 sudo groupadd -g 20250 hosted
 sudo groupadd docker
@@ -38,5 +45,6 @@ sudo usermod -aG docker $USER
 newgrp hosted
 ```
 
-# Docker
-Install via: https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+## Docker
+
+Install via: [Docker Engine on Ubuntu (repository install)](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
