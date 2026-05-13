@@ -16,31 +16,24 @@
 - [Homelab](#homelab)
   - [Documentation](#documentation)
   - [Table of Contents](#table-of-contents)
-  - [Hardware](#hardware)
     - [NAS-DEV (2025)](#nas-dev-2025)
-    - [Parts](#parts)
-  - [Parts List](#parts-list)
-  - [Power Budget](#power-budget)
-    - [inxi output](#inxi-output)
-  - [GPU allocation](#gpu-allocation)
-    - [Intel Arc A310](#intel-arc-a310)
-    - [NVIDIA RTX 3090](#nvidia-rtx-3090)
-  - [Virtual machines](#virtual-machines)
-    - [Windows 11 VM](#windows-11-vm)
-    - [Linux VM](#linux-vm)
-  - [Previous setup](#previous-setup)
-    - [NAS (2015)](#nas-2015)
+    - [NAS-DEV (2026)](#nas-dev-2026)
+      - [Parts List](#parts-list)
+      - [Power Budget](#power-budget)
       - [Hard drives](#hard-drives)
+      - [inxi output](#inxi-output)
+    - [Previous setup](#previous-setup)
+    - [NAS (2015)](#nas-2015)
     - [Gaming PC (2016)](#gaming-pc-2016)
 
-## Hardware
-
 ### NAS-DEV (2025)
+
+Original layout.
 
 - Ubuntu host OS (native Linux) - daily driver
 - Intel Arc A310 - host display + Jellyfin transcoding
 - RTX 3090 - PRIME offload for Unreal Engine on host, passthrough to Windows VM when gaming
-- Windows 11 VM - gaming with RTX 3090 passthrough, accessed via Looking Glass + SPICE + Scream
+- Windows 11 VM - gaming with RTX 3090 passthrough, accessed via Looking Glass + SPICE
 - Linux VM - self-hosted services (Nextcloud, XWiki, etc.) without GPU
 
 - Ubuntu Host OS (native Linux)
@@ -61,66 +54,102 @@
         - Cockpit
         - Wireguard
     - Gaming (Windows 11)
-      - RTX 3090 pass through, accessed via Looking Glass + SPICE + Scream?
+      - RTX 3090 pass through, accessed via Looking Glass + SPICE
       - Office
 - Hetzner VPS
   - Hosts bitrealm.dev
   - Reverse proxy for hosted services
 
-### Parts
+### NAS-DEV (2026)
 
-ASRock X870 TAICHI CREATOR AM5 ATX Motherboard
-AMD Ryzen 9 7950X (16-core)
-NEMIX RAM 64GB (2x32GB) DDR5 5600MHz ECC UDIMM x 2 (128GB total) - Running 4400 MT/s (no bios tweaking)
-CORSAIR HX1500i Modular Ultra-Low Noise ATX Power Supply, 80 PLUS Platinum
-LSI SAS 9300-8i 8-Port HBA Card
-SAMSUNG 990 PRO SSD 1TB (M.2 2280)
-SAMSUNG 990 PRO SSD 4TB (M.2 2280)
-20TB 7200rpm SATA Hard Drive (Various, 8 total)
-RTX 3090 Founders Edition
-Sparkle Intel Arc A310 Omni - 4GB GDDR6
+Reality after I discovered I don't like self hosting.
 
-I put the 8 SATA drives in a snapraid pool with mergerfs
+- Ubuntu (Daily driver)
+  - Graphics Cards
+    - Intel Arc A310
+      - Assigned: Ubuntu host
+      - Role: Host display and Jellyfin transcoding
+    - NVIDIA RTX 3090
+      - Assigned: Windows 11 VM when on; accessed via Looking Glass + SPICE
+      - Role: Gaming
+  - Cloud
+    - Fastmail
+    - Koofr (storage)
+      - Joplin backup
+    - Google
+      - gmail - rare instances
+      - drive - google docs, resume
+  - Docker
+    - Nginx Proxy Manager
+    - Dockge
+    - Jellyfin
+      - Connect externally via tailscale
+    - Immich (google photos backup, not maintained)
+    - Cloudflared (unused)
+    - Xwiki (unused)
+  - VMs
+    - Windows 11 (minimal use)
+      - Office
+- Windows11 (Native)
+  - Gaming and general usage
 
-## Parts List
+#### Parts List
 
-| Item                                        | Category          | Qty | Total Price (USD) | Vendor | Notes                                                         |
-| :------------------------------------------ | :---------------- | --: | ----------------: | :----- | :------------------------------------------------------------ |
-| ASUS RT-BE88U WiFi 7 Router                 | Router            |   1 |               290 | Amazon | 802.11be, 10G RJ45 & SFP+ WAN, 2.5G ×4, 1G ×4, limited VLAN   |
-| CyberPower CP1500PFCLCD (1500 VA / 1000 W)  | UPS               |   1 |               256 | Amazon | True sine wave; ~8–15 min at 300 W load                       |
-| Rosewill THOR NAS Pro Full Tower            | Case              |   1 |               234 | Newegg | 2+4 bay hot swap; middle bay relocated for RTX 3090 clearance |
-| ASRock X870 TAICHI CREATOR AM5 ATX          | Motherboard       |   1 |               341 | Newegg | PCIe 8×8×4, 10G & 5G Eth, WiFi 7, USB4                        |
-| AMD Ryzen 9 7950X (16-core)                 | CPU               |   1 |               478 | Amazon | 170 W TDP; Eco Mode 105 W; DDR5-3600 official support         |
-| Noctua NH-D15 chromax.black (140 mm)        | CPU cooler        |   1 |               149 | Amazon |                                                               |
-| NEMIX 64 GB (2×32 GB) DDR5-5600 ECC UDIMM   | RAM               |   2 |               714 | Newegg | CL42; 2×32 @ 5200, 4×32 @ 4400 (no BIOS changes)              |
-| RTX 3090 Founders Edition                   | GPU               |   1 |                 0 | Self   | Primary GPU; 350 W TDP                                        |
-| Sparkle Intel Arc A310 Omni 4 GB GDDR6      | GPU (transcoding) |   1 |               130 | Amazon | 1-slot, 4× HDMI, 50 W TDP                                     |
-| Samsung 990 PRO 4 TB M.2 NVMe               | NVMe              |   1 |               298 | Amazon | Proxmox LXC & VMs; TBW 2,400; 5-yr warranty                   |
-| Samsung 990 PRO 1 TB M.2 NVMe               | NVMe              |   1 |                96 | Amazon | Proxmox OS drive                                              |
-| ARCTIC P12 PWM PST (5-pack)                 | Case fans         |   1 |                46 | Amazon | 10 fans total in build                                        |
-| Noctua NF-A12×25 PWM chromax.black (120 mm) | Hot-swap bay fan  |   2 |                80 | Amazon |                                                               |
-| Noctua NF-A14 PWM chromax.black (140 mm)    | Rear exhaust fan  |   1 |                29 | Amazon |                                                               |
-| **Total**                                   |                   |     |         **3,141** |        |                                                               |
+| Item                                        | Category            | Qty | Total Price (USD) | Vendor  | Notes                                                         |
+| :------------------------------------------ | :------------------ | --: | ----------------: | :------ | :------------------------------------------------------------ |
+| ASUS RT-BE88U WiFi 7 Router                 | Router              |   1 |               290 | Amazon  | 802.11be, 10G RJ45 & SFP+ WAN, 2.5G ×4, 1G ×4, limited VLAN   |
+| CyberPower CP1500PFCLCD (1500 VA / 1000 W)  | UPS                 |   1 |               256 | Amazon  | True sine wave; ~8–15 min at 300 W load                       |
+| Rosewill THOR NAS Pro Full Tower            | Case                |   1 |               234 | Newegg  | 2+4 bay hot swap; middle bay relocated for RTX 3090 clearance |
+| ASRock X870 TAICHI CREATOR AM5 ATX          | Motherboard         |   1 |               341 | Newegg  | PCIe 8×8×4, 10G & 5G Eth, WiFi 7, USB4                        |
+| AMD Ryzen 9 7950X (16-core)                 | CPU                 |   1 |               478 | Amazon  | 170 W TDP; Eco Mode 105 W; DDR5-3600 official support         |
+| Noctua NH-D15 chromax.black (140 mm)        | CPU cooler          |   1 |               149 | Amazon  |                                                               |
+| NEMIX 64 GB (2×32 GB) DDR5-5600 ECC UDIMM   | RAM                 |   2 |               714 | Newegg  | CL42; 2×32 @ 5200, 4×32 @ 4400 (no BIOS changes)              |
+| RTX 3090 Founders Edition                   | GPU                 |   1 |                 0 | Self    | Primary GPU; 350 W TDP                                        |
+| Sparkle Intel Arc A310 ECO, 4GB GDDR6       | GPU (transcoding)   |   1 |               130 | Amazon  | 1-slot, 1× HDMI, 2 Mini DP (needed for monitor), 50 W TDP     |
+| Samsung 990 PRO 4 TB M.2 NVMe               | NVMe                |   1 |               298 | Amazon  | Linux & VMs; TBW 2,400; 5-yr warranty                         |
+| Samsung 990 PRO 1 TB M.2 NVMe               | NVMe                |   1 |                96 | Amazon  | Windows OS drive                                              |
+| LSI SAS 9300-8i 8-Port HBA Card             | Hard Drive Sas-Sata |   1 |                 0 | Amazon  | IT mode pre-enabled; $74 but got for free;                    |
+| 20 TB SATA HDDs                             | HDD                 |   6 |              1792 | Variuos |                                                               |
+| ARCTIC P12 PWM PST (5-pack)                 | Case fans           |   1 |                46 | Amazon  | 3 used in build                                               |
+| Noctua NF-A12×25 PWM chromax.black (120 mm) | Hot-swap bay fan    |   2 |                80 | Amazon  |                                                               |
+| Noctua NF-A14 PWM chromax.black (140 mm)    | Rear exhaust fan    |   1 |                29 | Amazon  |                                                               |
+| **Total**                                   |                     |     |         **3,141** |         |                                                               |
+| **Total with HDD**                          |                     |     |         **4,933** |         |                                                               |
 
-## Power Budget
+#### Power Budget
 
-| Component                    | Idle (W) | Typical (W) | Peak (W) | Notes                               |
-| :--------------------------- | -------: | ----------: | -------: | :---------------------------------- |
-| AMD Ryzen 9 7950X            |       25 |         105 |      300 | Eco Mode enabled                    |
-| NEMIX DDR5 ECC RAM (4×32 GB) |        8 |          24 |       24 |                                     |
-| RTX 3090 Founders Edition    |       30 |         150 |      350 |                                     |
-| Sparkle Intel Arc A310       |        5 |          25 |       50 |                                     |
-| Samsung 990 PRO 4 TB NVMe    |        2 |           5 |        9 |                                     |
-| Samsung 990 PRO 1 TB NVMe    |        1 |           3 |        6 |                                     |
-| 20 TB SATA HDDs (×6)         |       40 |          64 |       80 | SnapRAID; 2 parity + 4 data         |
-| All fans (×10)               |       15 |          25 |       30 |                                     |
-| **Total (estimated)**        |  **126** |     **401** |  **849** | PSU headroom: HX1500i rated 1,500 W |
+| Component                       | Idle (W) | Typical (W) | Peak (W) | Notes                               |
+| :------------------------------ | -------: | ----------: | -------: | :---------------------------------- |
+| AMD Ryzen 9 7950X               |       25 |         105 |      300 | Eco Mode enabled                    |
+| NEMIX DDR5 ECC RAM (4×32 GB)    |        8 |          24 |       24 |                                     |
+| RTX 3090 Founders Edition       |       30 |         150 |      350 |                                     |
+| Sparkle Intel Arc A310          |        5 |          25 |       50 |                                     |
+| Samsung 990 PRO 4 TB NVMe       |        2 |           5 |        9 |                                     |
+| Samsung 990 PRO 1 TB NVMe       |        1 |           3 |        6 |                                     |
+| LSI SAS 9300-8i 8-Port HBA Card |        8 |          13 |       19 |                                     |
+| 20 TB SATA HDDs (×6)            |       40 |          64 |       80 | SnapRAID; 2 parity + 4 data         |
+| All fans (×10)                  |       15 |          25 |       30 |                                     |
+| **Total (estimated)**           |  **134** |     **414** |  **868** | PSU headroom: HX1500i rated 1,500 W |
+
+#### Hard drives
+
+|Label     |Size (TB) |Make            |Model        |ID                    |Date Purchased |Cost (USD) |
+|:--------:|:--------:|:--------------:|:-----------:|:--------------------:|:-------------:|:---------:|
+|**VOL1**  |20        |Seagate         |IronWolf Pro |ST20000NE000‑3G5101   |2025‑01‑31     |290        |
+|**VOL2**  |20        |Western Digital |Red          |WDC WD201KFGX‑68BKJN0 |2022‑11‑28     |341        |
+|**VOL3**  |20        |Western Digital |Red          |WDC WD201KFGX‑68BKJN0 |2022‑11‑28     |341        |
+|**PAR1**  |20        |Seagate         |Exos X20     |ST20000NM007D‑3DJ103  |2025‑08‑22     |240        |
+|**VOL4**  |20        |MDD             |NAS          |—                     |2025‑10‑15     |290        |
+|—         |          |                |             |—                     |               |           |
+|—         |          |                |             |—                     |               |           |
+|**PAR2**  |20        |Seagate         |IronWolf Pro |ST20000NE000‑3G5101   |2025‑01‑31     |290        |
+|**Total** |80        |                |             |                      |               |**1,792**  |
 
 <details>
 
-<summary>Linux hardware listing</summary>
+<summary>⬇️ Linux hardware listing ⬇️</summary>
 
-### inxi output
+#### inxi output
 
 ```txt
 mbeisser@nas-dev:~$ sudo inxi -Fnn
@@ -209,47 +238,10 @@ Info:
   Memory: total: 128 GiB note: est. available: 124.82 GiB used: 4.6 GiB (3.7%)
   Processes: 605 Uptime: 18m Shell: Sudo inxi: 3.3.37
 ```
+
 </details>
 
-## GPU allocation
-
-### Intel Arc A310
-
-- **Role**: Host display and transcoding
-- **Permanently assigned to**: Ubuntu host
-- **Usage**:
-  - Primary display output (monitor connection)
-  - Desktop environment rendering
-  - Jellyfin hardware transcoding (QuickSync) - native linux host
-  - Always available for host
-
-### NVIDIA RTX 3090
-
-- **Default state**: Available to host via PRIME render offload
-- **Host usage**: Unreal Engine 5 development, Blender, CUDA workloads
-- **Gaming mode**: Passed through to Windows 11 VM (exclusive access)
-
-## Virtual machines
-
-### Windows 11 VM
-
-- **GPU**: RTX 3090 (full PCI passthrough when VM is running)
-- **Access method**:
-  - **Video**: Looking Glass (low-latency frame capture, displayed on Ubuntu desktop)
-  - **Input**: SPICE (keyboard/mouse via Looking Glass window, Scroll Lock to release)
-- **Monitor**: Stays connected to Arc A310, views Windows via Looking Glass window
-- **Usage**: Unreal Engine 5 development, Gaming
-- **Benefits**: **No dual-booting** - Everything accessible simultaneously  
-
-### Linux VM
-
-- **GPU**: None (CPU only)
-- **Services**: Nextcloud, XWiki, and other web-based self-hosted applications
-- **Reason for separation**: Isolation from primary Ubuntu environment - Self-hosted apps in separate VM for security  
-- **Access**: SSH, web interfaces (no GUI needed)
-- **Usage**: Self-Hosting
-
-## Previous setup
+### Previous setup
 
 I had 2 old machines; A NAS and a gaming PC. The power supply on the NAS died, and the only way to turn the gaming PC on was to get down and press the power button conveniently hidden below the graphics card on the motherboard.
 
@@ -269,22 +261,6 @@ I had 2 old machines; A NAS and a gaming PC. The power supply on the NAS died, a
 | **Total (without drives)** |  |  | 1,080  |
 
 The machine was a great introduction to data hoarding and self‑hosting. However, the system had no iGPU for Jellyfin transcoding, no space for a dedicated graphics card, some cooling issues, and then the power supply died.
-
-#### Hard drives
-
-Recently replaced all drives.
-
-|Label     |Size (TB) |Make            |Model        |ID                    |Date Purchased |Cost (USD) |
-| -------- |:--------:|:--------------:|:-----------:|:--------------------:|:-------------:|:---------:|
-|**VOL1**  |20        |Seagate         |IronWolf Pro |ST20000NE000‑3G5101   |2025‑01‑31     |290        |
-|**VOL2**  |20        |Western Digital |Red          |WDC WD201KFGX‑68BKJN0 |2022‑11‑28     |341        |
-|**VOL3**  |20        |Western Digital |Red          |WDC WD201KFGX‑68BKJN0 |2022‑11‑28     |341        |
-|**PAR1**  |20        |Seagate         |Exos X20     |ST20000NM007D‑3DJ103  |2025‑08‑22     |240        |
-|**VOL4**  |20        |MDD             |NAS          |—                     |2025‑10‑15     |290        |
-|<EMPTY>   |          |                |             |—                     |               |           |
-|<EMPTY>   |          |                |             |—                     |               |           |
-|**PAR2**  |20        |Seagate         |IronWolf Pro |ST20000NE000‑3G5101   |2025‑01‑31     |290        |
-|**Total** |80        |                |             |                      |               |**1,792**  |
 
 ### Gaming PC (2016)
 
