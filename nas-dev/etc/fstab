@@ -1,0 +1,48 @@
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system>                             <mount point>   <type>  <options>       <dump>  <pass>
+# / was on /dev/nvme0n1p2 during curtin installation
+/dev/disk/by-uuid/b2e6f7d8-69c4-49b0-b683-c21602a0c2c9 / ext4 defaults 0 1
+# /boot/efi was on /dev/nvme0n1p1 during curtin installation
+/dev/disk/by-uuid/655A-27A8 /boot/efi vfat defaults 0 1
+/swap.img	none	swap	sw	0	0
+
+# For snapraid don't record the last access time
+# xfs uses xfs_repair manually, and not automatic fsk, so (0 2) doesn't matter
+# but it does for ext4 data drives.
+UUID=90689dac-0a92-4540-84e4-0110cd9581d4   /mnt/vol1      xfs     defaults,noatime  0      2
+UUID=8fe3c907-90e9-4157-9b4d-a07c74d273f5   /mnt/vol2      xfs     defaults,noatime  0      2
+UUID=042770a5-1da5-404a-b33e-8e8433362f9e   /mnt/vol3      xfs     defaults,noatime  0      2
+UUID=7fe8ba27-c07b-47b0-86ab-5aa85dbb190d   /mnt/vol4      ext4    defaults,noatime  0      2
+
+# Skip disk checking for parity drives (0 0) they are parity (not files)
+UUID=cb92722e-b051-4eba-9c87-c84430911f79   /mnt/par1      ext4    defaults,noatime  0  0
+UUID=5155dfdf-d922-4deb-8403-578e958c2a1e   /mnt/par2      ext4    defaults,noatime  0  0
+
+# Old dead drive
+#UUID=d344f1a8-9aa3-463a-af4e-512185c6336b   /mnt/vol4      ext4    defaults         0      2
+
+# MergerFS Pool Configuration
+# Combines vol1-vol4 into a single unified pool at /pool
+# Options explained:
+#   allow_other           - Allows non-root users to access the pool
+#   use_ino               - Uses real inode values from underlying filesystems (recommended)
+#   default_permissions   - Default_permissions makes the kernel enforce POSIX permissions (uid/gid/mode/ACLs) 
+#                           before passing requests to mergerfs. This ensures Samba and other clients see 
+#                           consistent, predictable permission behavior. Recommended for Samba setups.
+#   category.create=epmfs - Creates new files on Existing Path, Most Free Space
+#   minfreespace=20G      - Won't write to drives with less than 20GB free space
+#   moveonenospc=true     - Automatically moves files if a drive fills up
+#   func.getattr=newest   - Returns newest file metadata (good for SnapRAID sync timing)
+#   cache.files=auto-full - Enables full page caching for better read/write performance
+#   cache.attr=30         - Help with timestamp consistency?
+#   dropcacheonclose=true - Clears page cache when files close (prevents stale data)
+#   parallel-direct-writes=true - Allows parallel writes to different disks (requires mergerfs >=2.35)
+#   fsname=pool           - Sets filesystem name for easier identification in df/mount output
+# Temp for upgrade
+/mnt/vol1/pool:/mnt/vol2/pool:/mnt/vol3/pool:/mnt/vol4/pool  /pool  fuse.mergerfs  allow_other,use_ino,default_permissions,category.create=epmfs,minfreespace=20G,moveonenospc=true,func.getattr=newest,cache.files=auto-full,cache.attr=30,dropcacheonclose=true,parallel-direct-writes=true,fsname=pool  0 0
+

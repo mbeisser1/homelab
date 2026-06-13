@@ -8,6 +8,7 @@
   - [Postfix Mail](docs/postfix_mail.md)
   - [Jellyfin](docs/jellyfin.md)
   - [Backup](docs/backup.md)
+  - [Disks (SnapRAID + mergerfs)](docs/disks.md)
 - [bitrealm.dev](docs/bitrealm_dev.md)
   - [Tailscale + NPM](docs/tailscale.md)
 - Virtual Machines

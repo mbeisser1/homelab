@@ -22,10 +22,10 @@ log "SMART Health Report for $HOST - $DATE"
 log "==================================================="
 
 OVERALL_OK=1
-mapfile -t DEVICES < <(sudo smartctl --scan)
+mapfile -t DEVICES < <(sudo smartctl --scan | grep -E ' (sat|scsi) ')
 
 if [[ ${#DEVICES[@]} -eq 0 ]]; then
-	log "No devices found by smartctl --scan. Exiting."
+	log "No SATA/SCSI devices found by smartctl --scan. Exiting."
 	exit 1
 fi
 

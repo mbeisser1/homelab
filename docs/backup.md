@@ -5,6 +5,7 @@ Scheduled backups on NAS-DEV are driven by `/usr/local/bin/cron_backup.sh` (also
 ## Table of contents
 
 - [Overview](#overview)
+- [Cron schedule](#cron-schedule)
 - [`/pool` off-site sync (Koofr & Filen)](#pool-off-site-sync-koofr--filen)
 - [Full backup flow](#full-backup-flow)
 - [Upstream: Docker volume backups](#upstream-docker-volume-backups)
@@ -23,6 +24,26 @@ Scheduled backups on NAS-DEV are driven by `/usr/local/bin/cron_backup.sh` (also
 | `filen-remote` | Filen cloud storage (secondary copy) |
 
 On completion (success or failure), the script emails an HTML log to `nas-dev@bitrealm.dev`.
+
+## Cron schedule
+
+NAS-DEV crontab entries for backup and SnapRAID maintenance:
+
+```cron
+#0 4 * * * /usr/local/bin/snapraid_sync.sh          # disabled - sync handled by cron_backup.sh
+0 0 * * * /usr/local/bin/cron_backup.sh >/dev/null 2>&1
+0 3 * * 0 /usr/local/bin/snapraid_scrub.sh >/dev/null 2>&1
+```
+
+| Schedule | Script | Role |
+| -------- | ------ | ---- |
+| Daily 00:00 | `cron_backup.sh` | SnapRAID status + sync, then rclone off-site copies |
+| Sunday 03:00 | `snapraid_scrub.sh` | SnapRAID status + 10% scrub; emails `snapraid@bitrealm.dev` |
+| Hourly (`0 * * * *`) | Backrest / restic | Docker volume snapshots (see [Upstream](#upstream-docker-volume-backups)) |
+
+`snapraid_sync.sh` is commented out because nightly sync is already performed inside `cron_backup.sh` before any rclone push. `snapraid_maint.sh` in `nas-dev/scripts/archive/` is not scheduled.
+
+Repo copies: [`nas-dev/scripts/cron_backup.sh`](../nas-dev/scripts/cron_backup.sh), [`nas-dev/scripts/snapraid_scrub.sh`](../nas-dev/scripts/snapraid_scrub.sh). Storage layout and SMART checks: [disks.md](disks.md).
 
 ## `/pool` off-site sync (Koofr & Filen)
 
