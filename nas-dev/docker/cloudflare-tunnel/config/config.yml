@@ -15,4 +15,3 @@ ingress:
   - hostname: stream.bitrealm.dev
     service: http://192.168.50.100
   - service: http_status:404
-
