@@ -76,26 +76,66 @@ LAN split DNS for `bitrealm.dev` homelab services. Overrides public Cloudflare D
 
 **Prerequisite:** Enable JFFS custom scripts and configs under [Administration → System](#administration) so changes survive reboots.
 
+#### Example config
+
+Paste at the top of `/jffs/configs/dnsmasq.conf.add`:
+
+```
+# dnsmasq.conf.add - LAN DNS overrides for bitrealm.dev
+# File: /jffs/configs/dnsmasq.conf.add (survives reboot; do not use /etc/dnsmasq.conf)
+# After edits: service restart_dnsmasq
+#
+# local=/domain/     - Answer for this domain locally; never forward to upstream DNS.
+# address=/host/ip   - Static A record. /host/ also matches subdomains of host.
+# address=/host/::1  - Optional. Maps hostname to IPv6 loopback so clients skip AAAA lookups.
+# server=/domain/ip  - Forward all other queries for this domain to upstream DNS (here: Cloudflare).
+#
+# LAN homelab services -> nas-dev NPM (192.168.50.100)
+# Tailscale services   -> nas-dev Tailscale IP (100.94.65.10); matches Cloudflare *.ts A record
+# Unlisted bitrealm.dev names -> server= forwards to 1.1.1.1 (website, mail, etc.)
+
+local=/dockge.bitrealm.dev/
+address=/dockge.bitrealm.dev/192.168.50.100
+
+local=/immich.bitrealm.dev/
+address=/immich.bitrealm.dev/192.168.50.100
+
+local=/stream.bitrealm.dev/
+address=/stream.bitrealm.dev/192.168.50.100
+
+local=/xwiki.bitrealm.dev/
+address=/xwiki.bitrealm.dev/192.168.50.100
+
+local=/backrest.bitrealm.dev/
+address=/backrest.bitrealm.dev/192.168.50.100
+
+local=/router.bitrealm.dev/
+address=/router.bitrealm.dev/192.168.50.1
+
+local=/printer.bitrealm.dev/
+address=/printer.bitrealm.dev/192.168.50.200
+
+local=/ts.bitrealm.dev/
+address=/ts.bitrealm.dev/100.94.65.10
+
+server=/bitrealm.dev/1.1.1.1
+```
+
+Add a matching NPM proxy host for each service hostname (both `<service>.bitrealm.dev` and `<service>.ts.bitrealm.dev` on the same host). See [Tailscale + NPM](tailscale.md).
+
 #### SSH steps
 
 ```bash
 # Connect to router
 ssh bitadmin@192.168.50.1
 
-# Edit dnsmasq config (append one block per service)
+# Edit dnsmasq config
 vi /jffs/configs/dnsmasq.conf.add
-```
-
-```
-address=/stream.bitrealm.dev/192.168.50.100
-address=/stream.bitrealm.dev/::1   # disable ipv6 locally for this hostname
 ```
 
 ```bash
 service restart_dnsmasq
 ```
-
-Add a matching NPM proxy host for each `address=` entry (e.g. `stream.bitrealm.dev` without the `.ts` suffix).
 
 - Use `/jffs/configs/dnsmasq.conf.add` (not `/etc/dnsmasq.conf` - changes won't survive reboot)
 - Entries automatically merge with the firmware's default configuration

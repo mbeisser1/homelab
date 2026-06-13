@@ -127,7 +127,7 @@ Private homelab services are reached over Tailscale, not the public internet.
 | DNS pattern       | `<service>.ts.bitrealm.dev`                                    |
 | Cloudflare record | `*.ts.bitrealm.dev` A → `100.94.65.10` (DNS only, not proxied) |
 
-A Tailscale client resolves e.g. `jellyfin.ts.bitrealm.dev` via [Cloudflare DNS](#dns-records) to `nas-dev`'s Tailscale IP, then connects over the tailnet to Nginx Proxy Manager on `nas-dev`. Setup steps: [Tailscale + NPM](tailscale.md). `nas-dev` advertises subnet routes for the LAN. IP forwarding is enabled on the host — see [Router](router.md).
+A Tailscale client resolves e.g. `stream.ts.bitrealm.dev` via [Cloudflare DNS](#dns-records) to `nas-dev`'s Tailscale IP, then connects over the tailnet to Nginx Proxy Manager on `nas-dev`. Setup steps: [Tailscale + NPM](tailscale.md). `nas-dev` advertises subnet routes for the LAN. IP forwarding is enabled on the host — see [Router](router.md).
 
 Note: Cloudflare Tunnel (`cloudflared`) is no longer used for remote access.
 
