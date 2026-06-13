@@ -9,6 +9,7 @@
   - [Jellyfin](docs/jellyfin.md)
   - [Backup](docs/backup.md)
 - [bitrealm.dev](docs/bitrealm_dev.md)
+  - [Tailscale + NPM](docs/tailscale.md)
 - Virtual Machines
   - [Windows 11](docs/windows11.md)
   - [Hosted Services](docs/hosted_services_vm.md)

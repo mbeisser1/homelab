@@ -72,23 +72,43 @@ Download and install for `dnsmasq`.
 
 ### dnsmasq
 
+LAN split DNS for `bitrealm.dev` homelab services. Overrides public Cloudflare DNS so LAN clients resolve service hostnames to `nas-dev` (`192.168.50.100`) where Nginx Proxy Manager runs. Remote access over Tailscale uses `<service>.ts.bitrealm.dev` instead - see [Tailscale + NPM](tailscale.md).
+
+**Prerequisite:** Enable JFFS custom scripts and configs under [Administration → System](#administration) so changes survive reboots.
+
 #### SSH steps
 
 ```bash
 # Connect to router
 ssh bitadmin@192.168.50.1
 
-# Create dnsmasq config
+# Edit dnsmasq config (append one block per service)
 vi /jffs/configs/dnsmasq.conf.add
-address=/stream.bitrealm.dev/192.168.50.100
-address=/stream.bitrealm.dev/::1 # disable ipv6 locally for this domain name
+```
 
+```
+address=/stream.bitrealm.dev/192.168.50.100
+address=/stream.bitrealm.dev/::1   # disable ipv6 locally for this hostname
+```
+
+```bash
 service restart_dnsmasq
 ```
 
-- Use `/jffs/configs/dnsmasq.conf.add` (not `/etc/dnsmasq.conf` — changes won't survive reboot)
-- Entries automatically merge with firmware's default configuration
+Add a matching NPM proxy host for each `address=` entry (e.g. `stream.bitrealm.dev` without the `.ts` suffix).
+
+- Use `/jffs/configs/dnsmasq.conf.add` (not `/etc/dnsmasq.conf` - changes won't survive reboot)
+- Entries automatically merge with the firmware's default configuration
 - Changes persist across reboots and firmware updates
+- LAN DNS servers are set under [LAN](#lan) (9.9.9.9, 1.1.1.1); `address=` overrides apply before upstream resolution
+
+#### Verify
+
+```bash
+nslookup stream.bitrealm.dev 192.168.50.1
+```
+
+Should return `192.168.50.100`, not a Cloudflare anycast IP.
 
 ## Tailscale
 
