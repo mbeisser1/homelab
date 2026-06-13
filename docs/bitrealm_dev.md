@@ -5,7 +5,6 @@
 - [bitrealm.dev](#bitrealmdev)
   - [Table of contents](#table-of-contents)
   - [Overview](#overview)
-  - [Who manages what](#who-manages-what)
   - [Spaceship](#spaceship)
   - [Cloudflare](#cloudflare)
     - [Authoritative DNS](#authoritative-dns)
@@ -16,27 +15,23 @@
     - [Manual DNS checklist](#manual-dns-checklist)
       - [Required for mail — already configured](#required-for-mail--already-configured)
       - [Do not add](#do-not-add)
-      - [Optional — add only if you want the feature](#optional--add-only-if-you-want-the-feature)
+      - [Optional](#optional)
   - [Tailscale](#tailscale)
   - [Traffic flow](#traffic-flow)
   - [Related docs](#related-docs)
 
 ## Overview
 
-`bitrealm.dev` is split across Spaceship (registrar), Cloudflare (DNS and website), Fastmail (email), and Tailscale (private homelab access). The domain is registered at Spaceship and uses Cloudflare as the authoritative DNS host. The website at `bitrealm.dev` is served by [Cloudflare Pages](#website) (`bitrealm-dev.pages.dev`); [email records](#dns-records) in Cloudflare point at [Fastmail](#fastmail), which does not host DNS; and [`*.ts.bitrealm.dev`](#tailscale) resolves to `nas-dev` over Tailscale for private homelab access.
+`bitrealm.dev` is split across Spaceship (registrar), Cloudflare (DNS and website), Fastmail (email), and Tailscale (private homelab access).
 
-Remote access to LAN services uses Tailscale (`<service>.ts.bitrealm.dev`), not Cloudflare Tunnel. See [Hosted Services](hosted_services_vm.md) for the legacy cloudflared approach.
+| Provider                                       | Role                   | Key settings                                                                                                 |
+|------------------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------|
+| [Spaceship](https://www.spaceship.com)         | Registrar              | [Spaceship](#spaceship)                                                                                      |
+| [Cloudflare](https://dash.cloudflare.com)      | DNS + Pages            | [Authoritative DNS](#authoritative-dns), [DNS records](#dns-records), [Website](#website)                    |
+| [Fastmail](https://www.fastmail.com)           | Mail                   | [Outbound mail authentication](#outbound-mail-authentication), [Manual DNS checklist](#manual-dns-checklist) |
+| [Tailscale](https://login.tailscale.com/admin) | Private homelab access | [Tailscale](#tailscale)                                                                                      |
 
-## Who manages what
-
-| Provider                                       | Role           | Manages                                      | Key settings                                                                                                            |
-|------------------------------------------------|----------------|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| [Spaceship](https://www.spaceship.com)         | Registrar      | Domain registration, NS delegation           | [Spaceship](#spaceship)                                                                                                 |
-| [Cloudflare](https://dash.cloudflare.com)      | DNS + Pages    | All public DNS records; static site hosting  | [Authoritative DNS](#authoritative-dns), [DNS records](#dns-records), [Website](#website)                                   |
-| [Fastmail](https://www.fastmail.com)           | Mail           | Mailboxes, inbound MX, outbound SMTP signing | [Outbound mail authentication](#outbound-mail-authentication), [Manual DNS checklist](#manual-dns-checklist) |
-| [Tailscale](https://login.tailscale.com/admin) | Private access | `nas-dev` tailnet, Magic DNS                 | [Tailscale](#tailscale)                                                                                                 |
-
-Outbound mail from `nas-dev` (cron alerts, system mail) relays through Fastmail SMTP. See [Postfix Mail](postfix_mail.md).
+Homelab services use `<service>.ts.bitrealm.dev` over Tailscale, not Cloudflare Tunnel — see [Hosted Services](hosted_services_vm.md) for the legacy approach. Cron/system mail from `nas-dev` relays through Fastmail — see [Postfix Mail](postfix_mail.md).
 
 ## Spaceship
 
@@ -61,15 +56,15 @@ Cloudflare hosts authoritative DNS and the public website. All live DNS records 
 
 ### DNS records
 
-Exported 2026-06-13. These are the live records that make everything work.
+Exported 2026-06-13.
 
-| Type  | Name                          | Value                                         | Proxy    | Purpose                             |
-|-------|-------------------------------|-----------------------------------------------|----------|-------------------------------------|
-| NS    | `bitrealm.dev`                | `nena.ns.cloudflare.com`                      | —        | Cloudflare authoritative            |
-| NS    | `bitrealm.dev`                | `rocco.ns.cloudflare.com`                     | —        | Cloudflare authoritative            |
-| CNAME | `bitrealm.dev`                | `bitrealm-dev.pages.dev`                      | Proxied  | Static site → [Website](#website)       |
-| MX, TXT, CNAME | `bitrealm.dev`, `_dmarc`, `fm1–fm3._domainkey` | — | — | Email → [Fastmail DNS](#manual-dns-checklist) |
-| A     | `*.ts.bitrealm.dev`           | `100.94.65.10`                                | DNS only | [Tailscale](#tailscale) → `nas-dev` |
+| Type           | Name                                           | Value                     | Proxy    | Purpose                                       |
+|----------------|------------------------------------------------|---------------------------|----------|-----------------------------------------------|
+| NS             | `bitrealm.dev`                                 | `nena.ns.cloudflare.com`  | —        | Cloudflare authoritative                      |
+| NS             | `bitrealm.dev`                                 | `rocco.ns.cloudflare.com` | —        | Cloudflare authoritative                      |
+| CNAME          | `bitrealm.dev`                                 | `bitrealm-dev.pages.dev`  | Proxied  | Static site → [Website](#website)             |
+| MX, TXT, CNAME | `bitrealm.dev`, `_dmarc`, `fm1–fm3._domainkey` | —                         | —        | Email → [Fastmail DNS](#manual-dns-checklist) |
+| A              | `*.ts.bitrealm.dev`                            | `100.94.65.10`            | DNS only | [Tailscale](#tailscale) → `nas-dev`           |
 
 ### Website
 
@@ -114,7 +109,7 @@ Per [Fastmail's manual DNS configuration](https://www.fastmail.help/hc/en-us/art
 | CNAME `*` → `web.fastmail.com`         | Wildcard would conflict with `*.ts.bitrealm.dev` and other subdomains |
 | A records for `@` / `*` (Fastmail IPs) | Root is a CNAME to Pages; do not add competing A records              |
 
-#### Optional — add only if you want the feature
+#### Optional
 
 | Fastmail record                                                  | Purpose                                                 | Trade-off                                                                                             |
 |------------------------------------------------------------------|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
