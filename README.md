@@ -7,6 +7,8 @@
   - [User Setup](docs/new_user.md)
   - [Postfix Mail](docs/postfix_mail.md)
   - [Jellyfin](docs/jellyfin.md)
+  - [Backup](docs/backup.md)
+- [bitrealm.dev](docs/bitrealm_dev.md)
 - Virtual Machines
   - [Windows 11](docs/windows11.md)
   - [Hosted Services](docs/hosted_services_vm.md)
