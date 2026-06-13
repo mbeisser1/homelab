@@ -1,5 +1,23 @@
 # Creating a Network Bridge for KVM/QEMU VMs on Ubuntu with NetworkManager
 
+## Table of contents
+
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Step 1: Verify You Are Using NetworkManager](#step-1-verify-you-are-using-networkmanager)
+- [Step 2: Identify Your Physical Network Interface](#step-2-identify-your-physical-network-interface)
+- [Step 3: Disable Cloud-Init Network Management](#step-3-disable-cloud-init-network-management)
+- [Step 4: Create the Bridge Netplan Configuration](#step-4-create-the-bridge-netplan-configuration)
+- [Step 5: Set Correct File Permissions](#step-5-set-correct-file-permissions)
+- [Step 6: Apply the Configuration](#step-6-apply-the-configuration)
+- [Step 7: Verify the Bridge](#step-7-verify-the-bridge)
+- [Step 8: Update Router DHCP Reservation (If Applicable)](#step-8-update-router-dhcp-reservation-if-applicable)
+- [Step 9: Update the VM Network Configuration](#step-9-update-the-vm-network-configuration)
+- [Step 10: Configure Windows Networking](#step-10-configure-windows-networking)
+- [Step 11: Test Connectivity](#step-11-test-connectivity)
+- [Troubleshooting](#troubleshooting)
+- [Result](#result)
+
 ## Overview
 
 This guide covers creating a network bridge on an Ubuntu host using NetworkManager/netplan,

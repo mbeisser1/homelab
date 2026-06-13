@@ -4,6 +4,18 @@ Asus [product page](https://www.asus.com/us/networking-iot-servers/wifi-routers/
 
 Internet is only 1G up/down, but there might be advantages for NFS and SAMBA if not mounting in VMs.
 
+## Table of contents
+
+- [Network ports](#network-ports)
+- [Merlin firmware](#merlin-firmware)
+- [Config options](#config-options)
+  - [Network](#network)
+  - [LAN](#lan)
+  - [VPN](#vpn)
+  - [Administration](#administration)
+  - [dnsmasq](#dnsmasq)
+- [Tailscale](#tailscale)
+
 ## Network ports
 
 | Port Type     | Speed | Quantity | Function               |

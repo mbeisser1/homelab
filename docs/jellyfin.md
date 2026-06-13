@@ -1,5 +1,12 @@
 # Jellyfin Setup
 
+## Table of contents
+
+- [User and groups](#user-and-groups)
+- [GPU](#gpu)
+- [Docker](#docker)
+- [Jellyfin config](#jellyfin-config)
+
 ## User and groups
 
 Check [user setup](new_user.md).

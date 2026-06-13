@@ -2,6 +2,19 @@
 
 Remote homelab access uses Tailscale and Nginx Proxy Manager (NPM) on `nas-dev`. Domain naming and DNS are documented in [bitrealm.dev](bitrealm_dev.md).
 
+## Table of contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Step 1: Tailscale on nas-dev](#step-1-tailscale-on-nas-dev)
+- [Step 2: Cloudflare DNS record](#step-2-cloudflare-dns-record)
+- [Step 3: Nginx Proxy Manager on nas-dev](#step-3-nginx-proxy-manager-on-nas-dev)
+- [Step 4: Add proxy host in NPM](#step-4-add-proxy-host-in-npm)
+- [Step 5: Request Let's Encrypt certificate](#step-5-request-lets-encrypt-certificate)
+- [Step 6: Verify access](#step-6-verify-access)
+- [Not needed for this setup](#not-needed-for-this-setup)
+- [Related docs](#related-docs)
+
 ## Overview
 
 | Component | Host | Role |

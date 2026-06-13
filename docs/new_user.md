@@ -2,6 +2,13 @@
 
 This page lists the first steps needed when rebuilding a linux box.
 
+## Table of contents
+
+- [Bash](#bash)
+- [Sudo](#sudo)
+- [Groups](#groups)
+- [Docker](#docker)
+
 ## Bash
 
 ```bash

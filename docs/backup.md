@@ -2,6 +2,15 @@
 
 Scheduled backups on NAS-DEV are driven by `/usr/local/bin/cron_backup.sh` (also tracked in the repo at `nas-dev/scripts/cron_backup.sh`). Docker volume snapshots are produced separately by [Backrest](https://github.com/garethgeorge/backrest) on an hourly schedule.
 
+## Table of contents
+
+- [Overview](#overview)
+- [`/pool` off-site sync (Koofr & Filen)](#pool-off-site-sync-koofr--filen)
+- [Full backup flow](#full-backup-flow)
+- [Upstream: Docker volume backups](#upstream-docker-volume-backups)
+- [rclone settings](#rclone-settings)
+- [Safety gates](#safety-gates)
+
 ## Overview
 
 | Component | Role |

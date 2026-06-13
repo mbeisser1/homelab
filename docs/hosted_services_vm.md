@@ -1,5 +1,35 @@
 # Cloudflare Tunnel + Nginx Proxy Manager Setup
 
+## Table of contents
+
+- [Cloudflare Tunnel + Nginx Proxy Manager Setup](#cloudflare-tunnel--nginx-proxy-manager-setup)
+  - [Table of contents](#table-of-contents)
+  - [Overview](#overview)
+    - [Architecture](#architecture)
+  - [Step 1: Configure Local DNS (dnsmasq)](#step-1-configure-local-dns-dnsmasq)
+    - [Verify DNS resolution](#verify-dns-resolution)
+  - [Step 2: Create Cloudflare API Token](#step-2-create-cloudflare-api-token)
+  - [Step 3: Configure Cloudflare Tunnel](#step-3-configure-cloudflare-tunnel)
+    - [Option A: Via config.yml (recommended)](#option-a-via-configyml-recommended)
+    - [Option B: Via Cloudflare Dashboard](#option-b-via-cloudflare-dashboard)
+  - [Step 4: Set Up Proxy Host in Nginx Proxy Manager](#step-4-set-up-proxy-host-in-nginx-proxy-manager)
+  - [Step 5: Request Let's Encrypt Certificate](#step-5-request-lets-encrypt-certificate)
+  - [Step 6: Verify Both Access Methods](#step-6-verify-both-access-methods)
+    - [Remote access (through Cloudflare)](#remote-access-through-cloudflare)
+    - [Local access (through local DNS)](#local-access-through-local-dns)
+    - [Check if local traffic stays local](#check-if-local-traffic-stays-local)
+  - [Docker Compose Example](#docker-compose-example)
+  - [Mount SnapRAID pool (virtiofs)](#mount-snapraid-pool-virtiofs)
+  - [Host Machine Setup (Ubuntu)](#host-machine-setup-ubuntu)
+  - [Guest VM Setup](#guest-vm-setup)
+  - [Restart Services](#restart-services)
+  - [XWiki: local DNS (split DNS)](#xwiki-local-dns-split-dns)
+    - [Summary](#summary)
+    - [Problem](#problem)
+    - [dnsmasq on the router](#dnsmasq-on-the-router)
+    - [Cloudflare Tunnel ingress](#cloudflare-tunnel-ingress)
+    - [Verification](#verification)
+
 ## Overview
 
 Here's how to set up a Cloudflare Tunnel and Nginx Proxy Manager to access LAN services with working SSL certificates for both remote (internet) and local (LAN) access.
@@ -13,7 +43,7 @@ Here's how to set up a Cloudflare Tunnel and Nginx Proxy Manager to access LAN s
 
 ## Step 1: Configure Local DNS (dnsmasq)
 
-dnsmasq runs on the [ASUS RT BE88U](router.md) router.
+`dnsmasq` runs on the [ASUS RT BE88U](router.md) router.
 
 ### Verify DNS resolution
 

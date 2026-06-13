@@ -2,6 +2,18 @@
 
 This document outlines the steps to configure Postfix on Ubuntu 25.04 as a send-only mail relay using Fastmail SMTP for cron job notifications and system alerts.
 
+## Table of contents
+
+- [System Details](#system-details)
+- [Installation](#installation)
+- [Configuration Files Modified](#configuration-files-modified)
+- [Database Generation](#database-generation)
+- [Service Management](#service-management)
+- [Testing](#testing)
+- [Key Troubleshooting Points](#key-troubleshooting-points)
+- [Security Considerations](#security-considerations)
+- [Result](#result)
+
 ## System Details
 
 - **System:** Ubuntu 25.04

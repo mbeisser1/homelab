@@ -2,6 +2,17 @@
 
 Single flow: prepare the Ubuntu host for VFIO, create and install Windows 11 with VirtIO, attach the RTX 3090, then use Looking Glass (and optionally PipeWire audio). Replace `win11` with your libvirt domain name if it differs.
 
+## Table of contents
+
+- [Overview and hardware](#overview-and-hardware)
+- [Part 1: Host — IOMMU, VFIO, and initramfs](#part-1-host--iommu-vfio-and-initramfs)
+- [Part 2: Host — QEMU and libvirt](#part-2-host--qemu-and-libvirt)
+- [Part 3: Create the VM and install Windows 11](#part-3-create-the-vm-and-install-windows-11)
+- [Part 4: GPU passthrough](#part-4-gpu-passthrough)
+- [Part 5: Looking Glass B7](#part-5-looking-glass-b7)
+- [Part 6: `qemu.conf`, device ACLs, and VM audio (Ubuntu 25.10)](#part-6-qemuconf-device-acls-and-vm-audio-ubuntu-2510)
+- [Quick PCI reference (example only)](#quick-pci-reference-example-only)
+
 ## Overview and hardware
 
 | Item | Details |

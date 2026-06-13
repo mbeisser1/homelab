@@ -8,6 +8,10 @@ I wanted a single workstation that could:
 - NAS
 - run hosted services (expose via vps)
 
+## Table of contents
+
+- [Evoluent Vertical Mouse 4](#evoluent-vertical-mouse-4)
+
 ## Evoluent Vertical Mouse 4
 
 ![Evoluent VerticalMouse 4 button labels](../evoluent_mouse_buttons_labeled.png)
