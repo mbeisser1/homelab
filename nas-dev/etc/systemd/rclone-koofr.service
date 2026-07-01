@@ -1,0 +1,27 @@
+[Unit]
+Description=Rclone Koofr Mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mbeisser
+Group=hosted
+Environment="HOME=/home/mbeisser"
+ExecStart=/usr/bin/rclone mount koofr-remote: /mnt/koofr \
+  --config /home/mbeisser/.config/rclone/rclone.conf \
+  --vfs-cache-mode writes \
+  --allow-other \
+  --poll-interval 0 \
+  --umask 000 \
+  --dir-cache-time 1h \
+  --log-level INFO \
+  --log-file /tmp/rclone-koofr.log
+ExecStop=/bin/fusermount3 -u /mnt/koofr
+ExecStop=/usr/bin/umount /mnt/koofr
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
