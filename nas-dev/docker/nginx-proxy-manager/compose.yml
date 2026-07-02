@@ -8,7 +8,7 @@ volumes:
 
 services:
   nginx-proxy-manager:
-    image: jc21/nginx-proxy-manager:2.12.6
+    image: jc21/nginx-proxy-manager:2.15.1
     container_name: nginx-proxy-manager
     restart: unless-stopped
     ports:
@@ -18,3 +18,20 @@ services:
     volumes:
       - data:/data
       - letsencrypt:/etc/letsencrypt
+
+#
+# Since nginx-proxy-manager and obsidian-assets are defined in the 
+# same docker-compose.yml, Docker Compose will attach them both
+# to the same auto-created network — in your case nginx-proxy-manager_default
+# (confirmed by your docker network ls output). That means NPM
+# can reach the obsidian-assets container directly by its container
+# name as a hostname, no host port publishing needed (and indeed,
+# docker ps shows obsidian-assets only exposes 80/tcp internally, not
+# to the host — which is correct/expected for this setup).
+  obsidian-assets:
+    image: nginx:alpine
+    container_name: obsidian-assets
+    restart: unless-stopped
+    volumes:
+      - /pool/docs:/usr/share/nginx/html:ro
+      - ./obsidian-assets-conf/default.conf:/etc/nginx/conf.d/default.conf:ro
