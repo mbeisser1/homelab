@@ -9,6 +9,7 @@
   - [Jellyfin](docs/jellyfin.md)
   - [Backup](docs/backup.md)
   - [Disks (SnapRAID + mergerfs)](docs/disks.md)
+  - [Immich](docs/immich.md)
 - [bitrealm.dev](docs/bitrealm_dev.md)
   - [Tailscale + NPM](docs/tailscale.md)
 - Virtual Machines
