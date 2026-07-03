@@ -1,0 +1,61 @@
+# dnsmasq.conf.add - LAN DNS overrides for bitrealm.dev
+# File: /jffs/configs/dnsmasq.conf.add (survives reboot; do not use /etc/dnsmasq.conf)
+# After edits: service restart_dnsmasq
+#
+# local=/domain/     - Answer for this domain locally; never forward to upstream DNS.
+# address=/host/ip   - Static A record. /host/ also matches subdomains of host.
+# address=/host/::1  - Optional. Maps hostname to IPv6 loopback so clients skip AAAA lookups.
+# server=/domain/ip  - Forward all other queries for this domain to upstream DNS (here: Cloudflare).
+#
+# LAN homelab services -> nas-dev NPM (192.168.50.100)
+# Tailscale services   -> nas-dev Tailscale IP (100.94.65.10); matches Cloudflare *.ts A record
+# Unlisted bitrealm.dev names -> server= forwards to 1.1.1.1 (website, mail, etc.)
+#
+# 2026-07-02 - Added obsidian urls
+
+local=/dockge.bitrealm.dev/
+address=/dockge.bitrealm.dev/192.168.50.100
+address=/dockge.bitrealm.dev/::1
+
+local=/immich.bitrealm.dev/
+address=/immich.bitrealm.dev/192.168.50.100
+address=/immich.bitrealm.dev/::1
+
+local=/stream.bitrealm.dev/
+address=/stream.bitrealm.dev/192.168.50.100
+address=/stream.bitrealm.dev/::1
+
+local=/xwiki.bitrealm.dev/
+address=/xwiki.bitrealm.dev/192.168.50.100
+address=/xwiki.bitrealm.dev/::1
+
+local=/backrest.bitrealm.dev/
+address=/backrest.bitrealm.dev/192.168.50.100
+address=/backrest.bitrealm.dev/::1
+
+local=/router.bitrealm.dev/
+address=/router.bitrealm.dev/192.168.50.1
+address=/router.bitrealm.dev/::1
+
+local=/printer.bitrealm.dev/
+address=/printer.bitrealm.dev/192.168.50.200
+address=/printer.bitrealm.dev/::1
+
+local=/obsidian.sync.bitrealm.dev/
+address=/obsidian.sync.bitrealm.dev/192.168.50.100
+#address=/obsidian.sync.bitrealm.dev/::1
+
+local=/obsidian-assets.bitrealm.dev/
+address=/obsidian-assets.bitrealm.dev/192.168.50.100
+address=/obsidian-assets.bitrealm.dev/::1
+
+# Forward to tailscale
+#server=/ts.bitrealm.dev/100.100.100.100
+#server=/.ts.bitrealm.dev/192.168.50.100
+local=/ts.bitrealm.dev/
+address=/ts.bitrealm.dev/100.94.65.10
+
+# Forward other domains to public cloudflare DNS
+server=/bitrealm.dev/1.1.1.1 
+bitadmin@router:/tmp/home/root# 
+
