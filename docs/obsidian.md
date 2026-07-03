@@ -1,44 +1,118 @@
-Joplin is now replaced by Obsidian. Jopling was too restricting because it had it's own database and that made koofr / nas documents inherintly separate from other documentation. Obsidian works well because it's vault is nothing more than a view of a directory which in my case is the docs portion of my cloud storage on koofr. Joplin was also limited with displaying html with css and had a lack of plugins. Previously syncing obsidian vault seemed problematic but that's been resovled.
+# Obsidian — NAS vault and iPhone sync
 
- recently setup obsidian vault with a root of /pool/docs
-/pool/docs is 2-way synced via the koofr gui client now insted of using rclone + cron scripts to stync
+Personal notes live in a plain folder on the NAS, backed up to Koofr cloud, and synced to an iPhone. Obsidian is just the editor — the vault is `/pool/docs`.
 
-Several options were tried
-- Mounting koofr via rclone - works but doesn't work with syncthing
-- Mounting as WebDAV - to slow, limited to one file at a time
+Related: [Backup](backup.md) · [Tailscale + NPM](tailscale.md) · [bitrealm.dev DNS](bitrealm_dev.md) · [Router DNS](router.md) · [User permissions](new_user.md)
 
-but neither of those work with syncthing & VaultSync on the iphone. Transfer rates are abysmal and the iphone client keeps disconnecting ard reconnecting.
+## Why Obsidian (not Joplin)
 
-I also added syncthing to docker compose. Docker compose uses obsidian-sync.bitrealm.dev
-I use that along with ios VaultSync for my iphone. Synchting has config in the obsidian vault root dir, i.e. /pool/docs
+Joplin kept notes in its own database, separate from the rest of my docs on Koofr. Obsidian opens a folder of Markdown files — the same files Koofr syncs, that Syncthing sends to my phone, and that nginx can serve as static assets. Better HTML preview and plugins were a bonus.
 
-.stfolder/
-.stignore
-  - Current config allows `_resources` to be copied but not `_assets`. _assets is what message vault uses, and other projects will as well.
-.stversions/ 
+## Overview
 
-When sharing a folder in SyncThing the Folder Path is the name of the mount IN the docker compse file. So it's not /pool/docs it's -> /obsidian
+```mermaid
+flowchart LR
+    koofr[Koofr cloud]
+    nas["/pool/docs"]
+    sync[Syncthing on NAS]
+    phone[iPhone Obsidian + VaultSync]
+    assets[obsidian-assets HTTPS]
 
-/pool/docs is served up via nginix now which was recently added to docker_compose - nginix_proxy_manager. nginix is apparently reacheable via host name because of the docker network?
-A config dir/file was necessary to add to enable file browsing. not necessary but helpful
- obsidian-assets-conf/default.conf
+    koofr <-->|Koofr desktop app| nas
+    nas <--> sync
+    sync <--> phone
+    nas --> assets
+    assets -.->|links in notes| phone
+```
 
-When configuring Syncthing
-- Select folder to share in syncthing webui
+| Piece | Role |
+| ----- | ---- |
+| **Koofr** | Cloud copy of docs; edit from any PC with the Koofr app |
+| **`/pool/docs`** | Vault on the NAS |
+| **Syncthing** | Syncs the vault to iPhone (VaultSync) |
+| **obsidian-assets** | Large files at `https://obsidian-assets.ts.bitrealm.dev/...` (Tailscale) |
 
-On iphone:
-- create a vault in obsidian first
-- then open Vaultsync
-- Add "device:" for vaulsync, this is the NAS
+Nightly backup also pulls Koofr → `/pool/docs/` ([backup.md](backup.md)). Koofr wins if NAS and cloud disagree.
 
-Back on Syncthing webui add the iphone (should auto detect on same network)
+## Key paths
 
-Both devices have to add each other in order for sync to work
+| What | Where |
+| ---- | ----- |
+| Vault | `/pool/docs` |
+| Syncthing config | `/opt/syncthing/config` |
+| Syncthing folder path **in the UI** | `/obsidian` (container mount name, not `/pool/docs`) |
+| Syncthing web UI | `https://obsidian-sync.ts.bitrealm.dev` (Tailscale; LAN: `obsidian-sync.bitrealm.dev` or `:8384`) |
+| Asset links in notes | `https://obsidian-assets.ts.bitrealm.dev/...` |
 
+Syncthing metadata inside the vault: `.stfolder/`, `.stignore`, `.stversions/`.
 
-In order to make sure the obsidian vault stays small for projects like the message vault, I have the urls of the assets in markdown files point to obsidian-assests.bitrealm.dev so the assets logically live in the correct structure but are accessible on any device becasue it's a web link. This is an altenative to r2 cloudflare.
+`.stignore` skips `_assets/` (heavy exports) but still syncs `_resources/` and normal notes.
 
-Some notes:
-- Koofr and syncthing can't handle directory names changes inby a single upper case -lower case or vice versa well at all. This is a known limitation and shouldn't be done. If it is needed, the best course of action is to STOP syncthing docker, delete the vault on iphone, and resync.
+## Docker
 
-Also if you are going to rename a folder do it on Koofr web: test_dir -> Test_dir and let changes propogate down to disk as opposed to on the nas and going up to koofr.
+| Service | Compose |
+| ------- | ------- |
+| Syncthing | [`nas-dev/docker/syncthing/compose.yml`](../nas-dev/docker/syncthing/compose.yml) |
+| Asset web server | [`nas-dev/docker/nginx-proxy-manager/compose.yml`](../nas-dev/docker/nginx-proxy-manager/compose.yml) (`obsidian-assets` service) |
+| nginx config (directory listing) | [`obsidian-assets-conf/default.conf`](../nas-dev/docker/nginx-proxy-manager/obsidian-assets-conf/default.conf) |
+
+Syncthing runs as user `1000`, group `20250` (`hosted`) so new files match the pool.
+
+Mount in compose: `/pool/docs:/obsidian`.
+
+## HTTPS hostnames
+
+Configure in [Nginx Proxy Manager](tailscale.md#step-4-add-proxy-host-in-npm). Primary access is over **Tailscale** (`.ts.bitrealm.dev`). Add the matching LAN name on the same proxy host if you want local access without Tailscale.
+
+| Hostname (primary) | Also on same cert (optional) | Points to | Port |
+| ---------------- | ---------------------------- | --------- | ---- |
+| `obsidian-sync.ts.bitrealm.dev` | `obsidian-sync.bitrealm.dev` | NAS Syncthing | `8384` |
+| `obsidian-assets.ts.bitrealm.dev` | `obsidian-assets.bitrealm.dev` | `obsidian-assets` container | `80` |
+
+LAN DNS on the router ([dnsmasq](router.md#dnsmasq)) is only needed for the non-`.ts` names. Tailscale hostnames use the Cloudflare `*.ts` wildcard ([bitrealm.dev](bitrealm_dev.md)).
+
+`obsidian-assets` reads `/pool/docs` read-only and enables directory browsing (useful when writing asset URLs).
+
+## iPhone setup
+
+1. Install **Obsidian** and **VaultSync**.
+2. Create a vault in Obsidian.
+3. In **VaultSync**, add the NAS as a device.
+4. In Syncthing on the NAS (`https://obsidian-sync.ts.bitrealm.dev`), add the iPhone (LAN or Tailscale).
+5. **Both sides must accept** — pair devices on each end.
+6. Shared folder on NAS: `/obsidian`.
+
+## Large files without bloating the phone
+
+Message exports and similar projects put big files under `_assets/`. Notes link to them as:
+
+`https://obsidian-assets.ts.bitrealm.dev/<path-under-pool-docs>`
+
+Files stay in the right folder on disk; the phone loads them in a browser when needed. Alternative to hosting on Cloudflare R2.
+
+## What did not work
+
+| Tried | Problem |
+| ----- | ------- |
+| Koofr via rclone mount | Bad with Syncthing |
+| Koofr WebDAV | Too slow |
+| Syncing all assets to iPhone | Huge vault, slow, VaultSync keeps disconnecting |
+
+## Gotchas
+
+- **Case-only renames** (`test_dir` → `Test_dir`) confuse Koofr and Syncthing. Avoid.
+- **Rename on Koofr web** first; let changes flow down to the NAS — not the other way around.
+- **If casing must be fixed:** stop Syncthing, delete the vault on the iPhone, resync from scratch.
+
+## Rebuild from scratch
+
+1. Create `/pool/docs` with `hosted` group permissions ([new_user.md](new_user.md)).
+2. Install Koofr desktop client; sync cloud `/docs/` ↔ `/pool/docs`.
+3. Start Syncthing from [`syncthing/compose.yml`](../nas-dev/docker/syncthing/compose.yml).
+4. Start `obsidian-assets` from the NPM compose stack.
+5. Add NPM proxy hosts + TLS for `obsidian-sync.ts.bitrealm.dev` and `obsidian-assets.ts.bitrealm.dev` (optionally add LAN names on the same hosts).
+6. If using LAN names, add router DNS for `obsidian-sync.bitrealm.dev` and `obsidian-assets.bitrealm.dev`.
+7. In Syncthing: add folder `/obsidian`, configure `.stignore`, pair iPhone.
+8. On iPhone: Obsidian vault + VaultSync pointed at the NAS folder.
+9. Confirm nightly backup still pulls Koofr docs ([backup.md](backup.md)).
+10. Test: edit on phone → shows on NAS; edit via Koofr on another PC → shows on NAS.
