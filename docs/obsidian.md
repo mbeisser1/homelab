@@ -2,7 +2,21 @@
 
 Personal notes live in a plain folder on the NAS, backed up to Koofr cloud, and synced to an iPhone. Obsidian is just the editor — the vault is `/pool/docs`.
 
-Related: [Backup](backup.md) · [Tailscale + NPM](tailscale.md) · [bitrealm.dev DNS](bitrealm_dev.md) · [Router DNS](router.md) · [User permissions](new_user.md)
+Related: [Backup](backup.md) · [Tailscale + NPM](tailscale.md) · [bitrealm.dev DNS](bitrealm_dev.md) · [Router DNS](router.md) · [Disks / pool](disks.md) · [User permissions](new_user.md)
+
+## Table of contents
+
+- [Why Obsidian (not Joplin)](#why-obsidian-not-joplin)
+- [Overview](#overview)
+- [Network architecture](#network-architecture)
+- [Key paths](#key-paths)
+- [Docker](#docker)
+- [HTTPS hostnames](#https-hostnames)
+- [iPhone setup](#iphone-setup)
+- [Large files without bloating the phone](#large-files-without-bloating-the-phone)
+- [What did not work](#what-did-not-work)
+- [Gotchas](#gotchas)
+- [Rebuild from scratch](#rebuild-from-scratch)
 
 ## Why Obsidian (not Joplin)
 
@@ -10,29 +24,89 @@ Joplin kept notes in its own database, separate from the rest of my docs on Koof
 
 ## Overview
 
-```mermaid
-flowchart LR
-    koofr[Koofr cloud]
-    nas["/pool/docs"]
-    sync[Syncthing on NAS]
-    phone[iPhone Obsidian + VaultSync]
-    assets[obsidian-assets HTTPS]
-
-    koofr <-->|Koofr desktop app| nas
-    nas <--> sync
-    sync <--> phone
-    nas --> assets
-    assets -.->|links in notes| phone
-```
+`nas-dev` (`192.168.50.100`) is the homelab hub. All bulk storage lives under `/pool` (mergerfs over four 20 TB disks). The Obsidian vault is `/pool/docs` — a subdirectory of that pool, not a separate silo. Obsidian desktop on the NAS edits those Markdown files directly. The Koofr desktop app keeps `/pool/docs` in 2-way sync with Koofr cloud `/docs/`, so edits from any PC with Koofr propagate to the NAS. Syncthing pushes the same vault to an iPhone via VaultSync. Docker services on the NAS (Syncthing, obsidian-assets, and others) are exposed through Nginx Proxy Manager — on the LAN or remotely over Tailscale.
 
 | Piece | Role |
 | ----- | ---- |
-| **Koofr** | Cloud copy of docs; edit from any PC with the Koofr app |
-| **`/pool/docs`** | Vault on the NAS |
-| **Syncthing** | Syncs the vault to iPhone (VaultSync) |
-| **obsidian-assets** | Large files at `https://obsidian-assets.ts.bitrealm.dev/...` (Tailscale) |
+| **NAS (`nas-dev`)** | Central host; `/pool` storage; Docker; Obsidian desktop; Tailscale node |
+| **`/pool`** | `/pool` — mergerfs + SnapRAID; entire homelab data pool, Koofr-synced off-site |
+| **`/pool/docs`** | `/pool/docs` — Obsidian vault (Markdown notes) |
+| **Koofr cloud** | Cloud copy of docs; 2-way sync via Koofr desktop app on NAS |
+| **Nginx Proxy Manager** | Reverse proxy + TLS on `:443`; routes HTTPS to backend services |
+| **Obsidian (desktop)** | Editor on NAS; opens `/pool/docs` as the vault |
+| **Syncthing** | 2-way sync of vault with iPhone (VaultSync) |
+| **obsidian-assets** | nginx web server (`:80`) serving `/pool/docs` read-only for large file links |
+| **iPhone** | Obsidian + VaultSync; subset of vault synced from NAS |
 
-Nightly backup also pulls Koofr → `/pool/docs/` ([backup.md](backup.md)). Koofr wins if NAS and cloud disagree.
+Nightly backup also pulls Koofr → `/pool/docs/` via rclone ([backup.md](backup.md)) as a restore path. Day-to-day sync is the Koofr desktop app; if NAS and cloud disagree after a nightly pull, Koofr wins.
+
+## Network architecture
+
+```mermaid
+flowchart TB
+    subgraph internet [Internet]
+        koofrCloud[Koofr cloud /docs]
+        tsDNS["Cloudflare DNS *.ts.bitrealm.dev"]
+    end
+
+    remoteClient[Phone / laptop on tailnet]
+
+    subgraph nasDev [nas-dev 192.168.50.100]
+        pool["/pool (mergerfs + snapraid)"]
+        poolDocs["/pool/docs (vault)"]
+        pool --> poolDocs
+
+        obsidianApp[Obsidian desktop]
+
+        npm[Nginx Proxy Manager :443]
+        syncthing[syncthing :8384]
+        obsAssets["obsidian-assets nginx:80 (web server)"]
+
+        obsidianApp <-->|edits| poolDocs
+        poolDocs --> obsAssets
+        poolDocs <--> syncthing
+
+        npm --> syncthing
+        npm --> obsAssets
+    end
+
+    iPhone[VaultSync + Obsidian]
+
+    remoteClient --> tsDNS
+    tsDNS -->|Tailscale IP| npm
+    koofrCloud <-->|Koofr desktop 2-way| poolDocs
+    syncthing <-->|Syncthing 2-way| iPhone
+```
+
+| Path | How |
+| ---- | --- |
+| **LAN** | `*.bitrealm.dev` → NPM on `nas-dev` ([router.md](router.md#dnsmasq) for local DNS) |
+| **Remote** | Tailscale client → `*.ts.bitrealm.dev` (Cloudflare A → Tailscale IP) → NPM → same backends ([tailscale.md](tailscale.md)) |
+| **Vault edits on NAS** | Obsidian opens `/pool/docs` directly; files land on mergerfs `/pool` |
+| **Cloud sync** | Koofr desktop app 2-way syncs `/pool/docs` ↔ Koofr cloud `/docs/` |
+| **Phone sync** | Syncthing ↔ VaultSync on iPhone (2-way); folder `/obsidian` mounts `/pool/docs` |
+| **Large assets** | `obsidian-assets` nginx serves `/pool/docs` read-only; notes link `https://obsidian-assets.ts.bitrealm.dev/...` |
+
+### NPM services
+
+Configure proxy hosts in [Nginx Proxy Manager](tailscale.md#step-4-add-proxy-host-in-npm). Primary remote access is over **Tailscale** (`.ts.bitrealm.dev`). Add the matching LAN name on the same proxy host for local access without Tailscale.
+
+| Service | LAN hostname | Tailscale hostname | Backend |
+| ------- | ------------ | ------------------ | ------- |
+| Syncthing | `obsidian-sync.bitrealm.dev` | `obsidian-sync.ts.bitrealm.dev` | `:8384` |
+| Asset server | `obsidian-assets.bitrealm.dev` | `obsidian-assets.ts.bitrealm.dev` | `obsidian-assets:80` (web server) |
+
+LAN DNS on the router ([dnsmasq](router.md#dnsmasq)) is only needed for the non-`.ts` names. Tailscale hostnames use the Cloudflare `*.ts` wildcard ([bitrealm.dev](bitrealm_dev.md)).
+
+### `/pool` storage
+
+`/pool` is more than the Obsidian vault:
+
+- mergerfs + SnapRAID over four 20 TB disks ([disks.md](disks.md))
+- `/pool` — homelab data pool
+- `/pool/docs` — Obsidian vault (Koofr-synced)
+- `/pool/archive`, `/pool/docker_archive` — other backup targets ([backup.md](backup.md))
+- Koofr cloud mirrors much of `/pool` off-site
 
 ## Key paths
 
@@ -60,18 +134,16 @@ Syncthing runs as user `1000`, group `20250` (`hosted`) so new files match the p
 
 Mount in compose: `/pool/docs:/obsidian`.
 
+`obsidian-assets` reads `/pool/docs` read-only and enables directory browsing (useful when writing asset URLs).
+
 ## HTTPS hostnames
 
-Configure in [Nginx Proxy Manager](tailscale.md#step-4-add-proxy-host-in-npm). Primary access is over **Tailscale** (`.ts.bitrealm.dev`). Add the matching LAN name on the same proxy host if you want local access without Tailscale.
+Obsidian-specific proxy hosts (also listed under [NPM services](#npm-services) above):
 
 | Hostname (primary) | Also on same cert (optional) | Points to | Port |
 | ---------------- | ---------------------------- | --------- | ---- |
 | `obsidian-sync.ts.bitrealm.dev` | `obsidian-sync.bitrealm.dev` | NAS Syncthing | `8384` |
 | `obsidian-assets.ts.bitrealm.dev` | `obsidian-assets.bitrealm.dev` | `obsidian-assets` container | `80` |
-
-LAN DNS on the router ([dnsmasq](router.md#dnsmasq)) is only needed for the non-`.ts` names. Tailscale hostnames use the Cloudflare `*.ts` wildcard ([bitrealm.dev](bitrealm_dev.md)).
-
-`obsidian-assets` reads `/pool/docs` read-only and enables directory browsing (useful when writing asset URLs).
 
 ## iPhone setup
 
