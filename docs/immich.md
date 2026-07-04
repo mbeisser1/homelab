@@ -268,31 +268,31 @@ Install ExifTool:
 sudo apt install libimage-exiftool-perl
 ```
 
-Script: `nas-dev/scripts/embed_immich_xmp.sh` (run on NAS-DEV against `library/admin/` after storage template migration — the tree with `.xmp` sidecars; thumbs and encoded-video have none).
+Script: `~/repo/archive-tools/scripts/embed-immich-xmp.sh` (run on NAS-DEV against `library/admin/` after storage template migration — the tree with `.xmp` sidecars; thumbs and encoded-video have none).
 
 ```bash
-# Copy or symlink to NAS-DEV, then:
-chmod +x ~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh
+# archive-tools on PATH (add to ~/.bashrc on NAS-DEV if needed)
+export PATH="$HOME/repo/archive-tools/scripts:$PATH"
 
 LIBRARY=/pool/archive/cloud_backups/immich/library/admin
 
 # 1. Count sidecars
-~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh stats -d "$LIBRARY"
+embed-immich-xmp.sh stats -d "$LIBRARY"
 
 # 2. Dry-run embed (shows exiftool command + counts)
-~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh embed -n -d "$LIBRARY"
+embed-immich-xmp.sh embed -n -d "$LIBRARY"
 
 # 3. Embed (photos + videos; LargeFileSupport for files > 2 GB)
-~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh embed -d "$LIBRARY"
+embed-immich-xmp.sh embed -d "$LIBRARY"
 
 # 4. Spot-check samples per format (JPEG, HEIC, MP4, …)
-~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh verify -d "$LIBRARY"
+embed-immich-xmp.sh verify -d "$LIBRARY"
 
 # 5. Delete sidecars after verify passes
-~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh delete -d "$LIBRARY" -y
+embed-immich-xmp.sh delete -d "$LIBRARY" -y
 
 # Or: embed + verify in one step; add -y to delete sidecars when verify passes
-~/repo/homelab/nas-dev/scripts/embed_immich_xmp.sh all -d "$LIBRARY" -y
+embed-immich-xmp.sh all -d "$LIBRARY" -y
 ```
 
 Manual equivalent (Immich sidecar naming: `IMG_001.jpg.xmp`):
