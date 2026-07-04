@@ -29,7 +29,7 @@ services:
 # docker ps shows obsidian-assets only exposes 80/tcp internally, not
 # to the host — which is correct/expected for this setup).
   obsidian-assets:
-    image: nginx:alpine
+    image: nginx:1.31-alpine
     container_name: obsidian-assets
     restart: unless-stopped
     volumes:
