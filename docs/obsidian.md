@@ -38,7 +38,7 @@ Joplin kept notes in its own database, separate from the rest of my docs on Koof
 | **obsidian-assets** | nginx web server (`:80`) serving `/pool/docs` read-only for large file links |
 | **iPhone** | Obsidian + VaultSync; subset of vault synced from NAS |
 
-Nightly backup also pulls Koofr → `/pool/docs/` via rclone ([backup.md](backup.md)) as a restore path. Day-to-day sync is the Koofr desktop app; if NAS and cloud disagree after a nightly pull, Koofr wins.
+Day-to-day sync is the Koofr desktop app (2-way on `/pool/docs`). Weekly, `cron_filen_weekly.sh` copies `/pool/docs` to a dated folder on Filen (`docs-YYYY-MM-DD-obsidian-vault`) as an off-site snapshot ([backup.md](backup.md)).
 
 ## Network architecture
 
@@ -186,5 +186,5 @@ Files stay in the right folder on disk; the phone loads them in a browser when n
 6. If using LAN names, add router DNS for `obsidian-sync.bitrealm.dev` and `obsidian-assets.bitrealm.dev`.
 7. In Syncthing: add folder `/obsidian`, configure `.stignore`, pair iPhone.
 8. On iPhone: Obsidian vault + VaultSync pointed at the NAS folder.
-9. Confirm nightly backup still pulls Koofr docs ([backup.md](backup.md)).
+9. Confirm weekly Filen vault copy is scheduled ([backup.md](backup.md#cron-schedule)).
 10. Test: edit on phone → shows on NAS; edit via Koofr on another PC → shows on NAS.

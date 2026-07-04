@@ -1,99 +1,70 @@
 # Backup
 
-Scheduled backups on NAS-DEV are driven by `/usr/local/bin/cron_backup.sh` (also tracked in the repo at `nas-dev/scripts/cron_backup.sh`). Docker volume snapshots are produced separately by [Backrest](https://github.com/garethgeorge/backrest) on an hourly schedule.
+Scheduled backups on NAS-DEV are driven by two cron scripts: `/usr/local/bin/cron_snapraid.sh` (daily SnapRAID) and `/usr/local/bin/cron_filen_weekly.sh` (weekly Filen jobs). Docker volume snapshots are produced separately by [Backrest](https://github.com/garethgeorge/backrest) on an hourly schedule.
 
 ## Table of contents
 
 - [Overview](#overview)
 - [Cron schedule](#cron-schedule)
-- [`/pool` off-site sync (Koofr & Filen)](#pool-off-site-sync-koofr--filen)
-- [Full backup flow](#full-backup-flow)
+- [Off-site sync](#off-site-sync)
+- [Daily SnapRAID flow](#daily-snapraid-flow)
+- [Weekly Filen flow](#weekly-filen-flow)
 - [Upstream: Docker volume backups](#upstream-docker-volume-backups)
 - [rclone settings](#rclone-settings)
 - [Safety gates](#safety-gates)
+- [Deploy on NAS](#deploy-on-nas)
 
 ## Overview
 
 | Component | Role |
 | --------- | ---- |
-| `cron_backup.sh` | Nightly (cron) orchestration: SnapRAID checks, rclone copies, email report |
+| `cron_snapraid.sh` | Daily (00:00): SnapRAID status + sync; email report |
+| `cron_filen_weekly.sh` | Weekly (Sun 00:30): Filen archive dry-run + dated Obsidian vault copy; email report |
 | Backrest / restic | Hourly Docker volume backups into `/pool/docker_archive/volumes` |
 | SnapRAID | Parity sync before off-site copies; aborts backup if unhealthy |
-| `rclone-filen` | rclone binary used for Koofr and Filen remotes |
-| `koofr-remote` | Koofr cloud storage |
-| `filen-remote` | Filen cloud storage (secondary copy) |
+| Koofr desktop app | 2-way sync of entire `/pool/` with Koofr cloud (not cron) |
+| `/usr/bin/rclone` | Used by weekly Filen script only |
+| `filen-remote` | Filen cloud storage (archive verification + dated docs snapshots) |
 
-On completion (success or failure), the script emails an HTML log to `nas-dev@bitrealm.dev`.
+On completion (success or failure), each script emails an HTML log to `nas-dev@bitrealm.dev`.
 
 ## Cron schedule
 
 NAS-DEV crontab entries for backup and SnapRAID maintenance:
 
 ```cron
-#0 4 * * * /usr/local/bin/snapraid_sync.sh          # disabled - sync handled by cron_backup.sh
-0 0 * * * /usr/local/bin/cron_backup.sh >/dev/null 2>&1
+#0 4 * * * /usr/local/bin/snapraid_sync.sh          # disabled - sync handled by cron_snapraid.sh
+0 0 * * * /usr/local/bin/cron_snapraid.sh >/dev/null 2>&1
+30 0 * * 0 /usr/local/bin/cron_filen_weekly.sh >/dev/null 2>&1
 0 3 * * 0 /usr/local/bin/snapraid_scrub.sh >/dev/null 2>&1
 ```
 
 | Schedule | Script | Role |
 | -------- | ------ | ---- |
-| Daily 00:00 | `cron_backup.sh` | SnapRAID status + sync, then rclone off-site copies |
+| Daily 00:00 | `cron_snapraid.sh` | SnapRAID status + sync |
+| Sunday 00:30 | `cron_filen_weekly.sh` | Filen archive dry-run + dated `/pool/docs` copy |
 | Sunday 03:00 | `snapraid_scrub.sh` | SnapRAID status + 10% scrub; emails `snapraid@bitrealm.dev` |
 | Hourly (`0 * * * *`) | Backrest / restic | Docker volume snapshots (see [Upstream](#upstream-docker-volume-backups)) |
 
-`snapraid_sync.sh` is commented out because nightly sync is already performed inside `cron_backup.sh` before any rclone push. `snapraid_maint.sh` in `nas-dev/scripts/archive/` is not scheduled.
+`snapraid_sync.sh` is commented out because nightly sync is already performed inside `cron_snapraid.sh`. `snapraid_maint.sh` in `nas-dev/scripts/archive/` is not scheduled.
 
-Repo copies: [`nas-dev/scripts/cron_backup.sh`](../nas-dev/scripts/cron_backup.sh), [`nas-dev/scripts/snapraid_scrub.sh`](../nas-dev/scripts/snapraid_scrub.sh). Storage layout and SMART checks: [disks.md](disks.md).
+Repo copies: [`nas-dev/scripts/cron_snapraid.sh`](../nas-dev/scripts/cron_snapraid.sh), [`nas-dev/scripts/cron_filen_weekly.sh`](../nas-dev/scripts/cron_filen_weekly.sh), [`nas-dev/scripts/snapraid_scrub.sh`](../nas-dev/scripts/snapraid_scrub.sh). Storage layout and SMART checks: [disks.md](disks.md).
 
-## `/pool` off-site sync (Koofr & Filen)
+## Off-site sync
 
-Each nightly run copies three paths under `/pool` to cloud storage. Koofr and Filen are not mirrors of each other — each path has a specific role on each remote.
+Koofr and Filen serve different roles. Koofr desktop handles day-to-day 2-way sync of `/pool/`; Filen receives weekly archive verification and dated Obsidian vault snapshots.
 
 | `/pool` path | Koofr | Filen | Notes |
 | ------------ | ----- | ----- | ----- |
-| `/pool/docs/` | **pull** at start | **push** after SnapRAID | Koofr is the docs source of truth; Filen gets a copy |
-| `/pool/archive/` | **push** | **push** | Both remotes receive the same archive tree |
-| `/pool/docker_archive/` | **push** (if restic idle) | **push** (if restic idle) | Skipped while Backrest/restic is writing snapshots |
-
-All **push** copies run only after SnapRAID `status` and `sync` succeed. If either fails, every push is skipped.
-
-### Copy order
-
-Operations run in this sequence every night:
-
-```mermaid
-flowchart TD
-    S1["① koofr-remote:/docs/ → /pool/docs/"]
-    S2["② SnapRAID status + sync"]
-    S3["③ /pool/archive/ → koofr-remote:/archive/"]
-    S4{"restic running?"}
-    S5["④ /pool/docker_archive/ → filen-remote:/docker_archive/"]
-    S6["⑤ /pool/docker_archive/ → koofr-remote:/docker_archive/"]
-    S7["⑥ /pool/docs/ → filen-remote:/docs/"]
-    S8["⑦ /pool/archive/ → filen-remote:/archive/"]
-
-    S1 --> S2
-    S2 -->|ok| S3
-    S2 -->|fail| ABORT[Abort — no pushes]
-    S3 --> S4
-    S4 -->|no| S5
-    S5 --> S6
-    S6 --> S7
-    S4 -->|yes| SKIP[Skip ④⑤ docker_archive copies]
-    SKIP --> S7
-    S7 --> S8
-```
-
-### Path map
-
-Where each `/pool` tree flows relative to the two remotes:
+| `/pool/` (entire pool) | **2-way** via Koofr desktop app | — | Not driven by cron |
+| `/pool/docs/` | **2-way** via Koofr desktop app | **dated copy** weekly | Each Sunday: `docs-YYYY-MM-DD-obsidian-vault` on Filen |
+| `/pool/archive/` | **2-way** via Koofr desktop app | **dry-run verify** weekly | `rclone sync --dry-run` reports drift; no writes |
+| `/pool/docker_archive/` | **2-way** via Koofr desktop app | — | Filled hourly by Backrest/restic |
 
 ```mermaid
 flowchart LR
-    subgraph koofr["koofr-remote"]
-        KD["/docs/"]
-        KA["/archive/"]
-        KDA["/docker_archive/"]
+    subgraph koofr["Koofr desktop (not cron)"]
+        KC["Koofr cloud"]
     end
 
     subgraph pool["/pool"]
@@ -102,61 +73,53 @@ flowchart LR
         PDA["/docker_archive/"]
     end
 
-    subgraph filen["filen-remote"]
-        FD["/docs/"]
-        FA["/archive/"]
-        FDA["/docker_archive/"]
+    subgraph filen["filen-remote (weekly cron)"]
+        FD["/docs-YYYY-MM-DD-obsidian-vault/"]
+        FA["/archive/ (dry-run only)"]
     end
 
-    KD -->|"① pull"| PD
-    PA -->|"③ push"| KA
-    PDA -.->|"⑤ push"| KDA
-
-    PD -->|"⑥ push"| FD
-    PA -->|"⑦ push"| FA
-    PDA -.->|"④ push"| FDA
+    KC <-->|"2-way sync"| pool
+    PD -->|"rclone copy (Sun)"| FD
+    PA -.->|"rclone sync --dry-run (Sun)"| FA
 ```
 
-Solid arrows always run (after SnapRAID passes). Dotted arrows run only when `restic` is **not** running.
+Solid arrow: weekly dated copy. Dotted arrow: dry-run verification only (no writes to Filen).
 
-### Per-path detail
-
-**`/pool/docs/`** — Koofr pulls down first; Filen receives the result afterward. Docs are never pushed back to Koofr in this script. Any local-only edits on the NAS are overwritten by the Koofr pull.
-
-**`/pool/archive/`** — Pushed to Koofr first, then to Filen. Both remotes should end up with the same content.
-
-**`/pool/docker_archive/`** — Filled hourly by Backrest/restic. Pushed to Filen, then Koofr, but only when no `restic` process is active. Avoids uploading partially-written snapshots.
-
-## Full backup flow
+## Daily SnapRAID flow
 
 ```mermaid
 flowchart TD
-    START([cron_backup.sh starts]) --> GUARD{rclone-filen already running?}
-    GUARD -->|yes| MAIL_BUSY[Email: backup already in progress]
-    MAIL_BUSY --> END_BUSY([exit 0])
-
-    GUARD -->|no| RESTORE["koofr-remote:/docs/ → /pool/docs/"]
-    RESTORE --> STATUS[SnapRAID status]
+    START([cron_snapraid.sh starts]) --> STATUS[SnapRAID status]
     STATUS -->|error| ABORT_STATUS[Email failure, exit 1]
     STATUS -->|ok| SYNC[SnapRAID sync]
     SYNC -->|error| ABORT_SYNC[Email failure, exit 1]
-    SYNC -->|ok| K_ARCHIVE["/pool/archive/ → koofr-remote:/archive/"]
-
-    K_ARCHIVE --> RESTIC{restic running?}
-    RESTIC -->|yes| SKIP_DOCKER[Skip docker_archive remote copies]
-    RESTIC -->|no| F_DOCKER["/pool/docker_archive/ → filen-remote:/docker_archive/"]
-    F_DOCKER --> K_DOCKER["/pool/docker_archive/ → koofr-remote:/docker_archive/"]
-    K_DOCKER --> F_DOCS
-    SKIP_DOCKER --> F_DOCS
-
-    F_DOCS["/pool/docs/ → filen-remote:/docs/"] --> F_ARCHIVE["/pool/archive/ → filen-remote:/archive/"]
-    F_ARCHIVE --> MAIL[Email HTML log]
+    SYNC -->|ok| MAIL[Email HTML log]
     MAIL --> END([exit with status code])
 ```
 
+No rclone operations run in the daily job. Koofr desktop keeps `/pool` in sync independently.
+
+## Weekly Filen flow
+
+```mermaid
+flowchart TD
+    START([cron_filen_weekly.sh starts]) --> LOCK{flock available?}
+    LOCK -->|no| END_BUSY([exit 0 — already running])
+    LOCK -->|yes| DRY["rclone sync --dry-run /pool/archive/ → filen-remote:/archive/"]
+    DRY --> COPY["rclone copy /pool/docs/ → filen-remote:/docs-YYYY-MM-DD-obsidian-vault/"]
+    COPY --> MAIL[Email HTML log]
+    MAIL --> END([exit with status code])
+```
+
+**Archive dry-run** — logs what would change if a real sync ran. The output is the deliverable; Filen is not modified.
+
+**Docs snapshot** — each Sunday creates a new dated remote folder (e.g. `docs-2026-07-06-obsidian-vault`). Prior weeks' copies are never overwritten.
+
+Concurrency uses `flock` on `/var/lock/cron_filen_weekly.lock` (not `pgrep rclone`, which would match the Koofr mount helper).
+
 ## Upstream: Docker volume backups
 
-Backrest runs restic hourly (`0 * * * *`) and writes repository data under `/pool/docker_archive/volumes`. The cron script comment notes that this is what populates `/pool/docker_archive` before the nightly rclone push.
+Backrest runs restic hourly (`0 * * * *`) and writes repository data under `/pool/docker_archive/volumes`. Koofr desktop 2-way syncs `/pool/docker_archive/` off-site; no cron rclone push is needed.
 
 ```mermaid
 flowchart LR
@@ -175,15 +138,13 @@ flowchart LR
         da["/pool/docker_archive/volumes"]
     end
 
-    subgraph offsite["Nightly cron_backup.sh"]
-        koofr[koofr-remote:/docker_archive/]
-        filen[filen-remote:/docker_archive/]
+    subgraph offsite["Koofr desktop"]
+        koofr[Koofr cloud]
     end
 
     sources --> restic
     restic --> da
-    da -->|"rclone copy (if restic idle)"| koofr
-    da -->|"rclone copy (if restic idle)"| filen
+    da -->|"2-way sync"| koofr
 ```
 
 Backed-up paths (from Backrest config):
@@ -197,19 +158,38 @@ Backed-up paths (from Backrest config):
 
 ## rclone settings
 
-The script sets these defaults for all copy operations:
+The weekly Filen script sets these defaults:
 
 - `RCLONE_DISABLE_HTTP2=true`
 - `RCLONE_TRANSFERS=16`
 - Log level: `INFO`
+- Binary: `/usr/bin/rclone`
 
 ## Safety gates
 
-| Check | On failure |
-| ----- | ---------- |
-| Another `rclone-filen` process running | Exit 0, email "backup already in progress" |
-| SnapRAID `status` | Exit 1, skip all copies |
-| SnapRAID `sync` | Exit 1, skip all copies |
-| `restic` running during docker_archive copies | Skip docker_archive copies to Koofr and Filen only |
+| Check | Script | On failure |
+| ----- | ------ | ---------- |
+| SnapRAID `status` | `cron_snapraid.sh` | Exit 1, email failure |
+| SnapRAID `sync` | `cron_snapraid.sh` | Exit 1, email failure |
+| `flock` on `/var/lock/cron_filen_weekly.lock` | `cron_filen_weekly.sh` | Exit 0 (another instance running) |
+| rclone dry-run or copy errors | `cron_filen_weekly.sh` | Exit 1, email failure |
 
-SnapRAID `scrub` is present in the script but commented out.
+Weekly SnapRAID scrub runs via `snapraid_scrub.sh` (not in `cron_snapraid.sh`).
+
+## Deploy on NAS
+
+After merging changes, on `nas-dev`:
+
+```bash
+sudo cp ~/repo/homelab/nas-dev/scripts/cron_snapraid.sh /usr/local/bin/
+sudo cp ~/repo/homelab/nas-dev/scripts/cron_filen_weekly.sh /usr/local/bin/
+sudo chmod +x /usr/local/bin/cron_snapraid.sh /usr/local/bin/cron_filen_weekly.sh
+crontab -e   # add Sunday line if not present; daily line unchanged
+```
+
+Target crontab (repo documents intent; actual `crontab -e` is on the NAS, not in git):
+
+```cron
+0 0 * * * /usr/local/bin/cron_snapraid.sh >/dev/null 2>&1
+30 0 * * 0 /usr/local/bin/cron_filen_weekly.sh >/dev/null 2>&1
+```

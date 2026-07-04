@@ -1,11 +1,6 @@
 #!/bin/bash
+# OBSOLETE — Koofr desktop app 2-way syncs /pool; Filen jobs run via cron_filen_weekly.sh.
+# See docs/backup.md
 
-echo "Starting rclone copy..."
-
-echo "rclone copy koofr-remote:/docs/ -> /pool/docs/"
-/usr/local/bin/rclone-filen copy koofr-remote:/docs/ /pool/docs/
-
-echo "rclone copy /pool/archive/ -> koofr-remote:/archive/"
-/usr/local/bin/rclone-filen copy /pool/archive/ koofr-remote:/archive/
-
-echo "Done"
+echo "rclone_backup.sh is retired. Use Koofr desktop for /pool sync and cron_filen_weekly.sh for Filen."
+exit 1

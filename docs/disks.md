@@ -29,7 +29,7 @@ NAS-DEV stores bulk data on six 20 TB SATA drives behind an LSI SAS 9300-8i HBA.
 
 Related docs:
 
-- [Backup](backup.md) - nightly SnapRAID sync and off-site copies
+- [Backup](backup.md) - nightly SnapRAID sync; weekly Filen off-site copies
 - [New user setup](new_user.md) - `hosted` group for pool permissions
 - [Jellyfin](jellyfin.md) - permissions on `/pool`
 - [Hosted Services VM](hosted_services_vm.md) - virtiofs shares `/pool` into VMs
@@ -195,7 +195,8 @@ Cron schedules and backup integration are documented in [backup.md](backup.md#cr
 
 | Script | Active | Role |
 | ------ | ------ | ---- |
-| [`cron_backup.sh`](../nas-dev/scripts/cron_backup.sh) | yes (daily 00:00) | SnapRAID status + sync, then rclone |
+| [`cron_snapraid.sh`](../nas-dev/scripts/cron_snapraid.sh) | yes (daily 00:00) | SnapRAID status + sync only |
+| [`cron_filen_weekly.sh`](../nas-dev/scripts/cron_filen_weekly.sh) | yes (Sun 00:30) | Filen archive dry-run + dated docs copy |
 | [`snapraid_scrub.sh`](../nas-dev/scripts/snapraid_scrub.sh) | yes (Sun 03:00) | status + 10% scrub, email result |
 
 Scrub emails `snapraid@bitrealm.dev`. The backup script emails `nas-dev@bitrealm.dev`.
