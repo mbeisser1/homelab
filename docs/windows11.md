@@ -11,6 +11,7 @@ Single flow: prepare the Ubuntu host for VFIO, create and install Windows 11 wit
 - [Part 4: GPU passthrough](#part-4-gpu-passthrough)
 - [Part 5: Looking Glass B7](#part-5-looking-glass-b7)
 - [Part 6: `qemu.conf`, device ACLs, and VM audio (Ubuntu 25.10)](#part-6-qemuconf-device-acls-and-vm-audio-ubuntu-2510)
+- [Backup and restore](#backup-and-restore)
 - [Quick PCI reference (example only)](#quick-pci-reference-example-only)
 
 ## Overview and hardware
@@ -347,6 +348,65 @@ Place **`<audio>` before `<video>`**. Example:
 
 - With **root QEMU**, `PULSE_SERVER` forces the PulseAudio backend to talk to the **interactive user’s** PipeWire stack instead of root’s (which has no session socket).
 - **`pipewire-pulse`** still implements the server QEMU speaks to; the guest’s `type='pulseaudio'` audio goes out your normal desktop output.
+
+---
+
+## Backup and restore
+
+Script: [`nas-dev/scripts/virsh_vm_backup.sh`](../nas-dev/scripts/virsh_vm_backup.sh) (install to `/usr/local/bin/` on the libvirt host).
+
+The VM must be **shut off** before backup. Output goes to `/pool/archive/vm/<domain>/<timestamp>/` (Koofr-synced with the rest of `/pool/archive/`).
+
+```bash
+virsh shutdown win11
+# wait until: virsh domstate win11  →  shut off
+sudo virsh_vm_backup.sh win11
+```
+
+Each run captures:
+
+| Path | Contents |
+| --- | --- |
+| `win11.xml` | Inactive libvirt domain definition |
+| `nvram/` | OVMF `*_VARS.fd` (UEFI / Secure Boot state) |
+| `tpm/<uuid>/` | swtpm persistent state (Windows 11 identity) |
+| `disks/` | File-backed qcow2 images |
+| `host-config/` | `qemu.conf`, vfio/blacklist modprobe, initramfs modules, GRUB IOMMU line, Looking Glass **client** ini |
+| `manifest.txt` | Domain UUID, artifact list, restore notes |
+
+Skip host-side files with `--no-host-config`. Override the base path with `-o DIR`.
+
+**Not included (manual):** guest Looking Glass host config — copy from inside Windows:
+
+```text
+C:\Program Files\Looking Glass (host)\looking-glass-host.ini
+```
+
+Minimal contents for this setup:
+
+```ini
+[dxgi]
+adapter=NVIDIA GeForce RTX 3090
+```
+
+Use the exact adapter name from **Device Manager**.
+
+### Restore (same host)
+
+```bash
+TS=<timestamp>   # e.g. 2026-07-04_14-30-00
+UUID=<domain-uuid>   # from manifest.txt
+
+sudo cp -a /pool/archive/vm/win11/$TS/disks/* /var/lib/libvirt/images/
+sudo cp -a /pool/archive/vm/win11/$TS/nvram/* /var/lib/libvirt/qemu/nvram/
+sudo cp -a /pool/archive/vm/win11/$TS/tpm/$UUID /var/lib/libvirt/swtpm/
+sudo chown -R root:root /var/lib/libvirt/images/* /var/lib/libvirt/qemu/nvram/*
+sudo chown -R root:root /var/lib/libvirt/swtpm/$UUID   # or tss:tss per distro
+sudo virsh define /pool/archive/vm/win11/$TS/win11.xml
+sudo virsh start win11
+```
+
+On a different host, edit disk and NVRAM paths in the XML before `virsh define`. PCI passthrough and IVSHMEM entries are host-specific.
 
 ---
 

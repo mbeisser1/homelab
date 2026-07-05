@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Export named Docker volumes (and optional bind-mount dirs) to timestamped tar.gz archives.
+# Export named Docker volumes (and optional bind-mount dirs) to timestamped .tgz archives.
 # Filenames include the backing container image tag, e.g.:
-#   syncthing_config_1.28.2_2026-07-04_13-45-00.tar.gz
+#   syncthing_config_2.1.1_2026-07-04_13-45-00.tgz
 #
 # Usage:
 #   docker_volume_backup.sh VOLUME [VOLUME ...]
@@ -21,10 +21,11 @@ usage() {
 	cat <<EOF
 Usage: $(basename "$0") [options] [VOLUME ...]
 
-Export archives to \${DEST}/\${name}_\${version}_YYYY-MM-DD_HH-MM-SS.tar.gz
+Export archives to \${DEST}/\${name}_\${version}_YYYY-MM-DD_HH-MM-SS.tgz
 
-Version is read from the Docker image tag of a container using the volume or bind path.
-Restore with the same (or newer) application version as recorded in the filename.
+Version is read from docker inspect Config.Image on the container using the volume or bind path,
+e.g. docker inspect syncthing --format '{{.Config.Image}}' | awk -F: '{print $2}'.
+With --stop, versions are resolved before containers are removed.
 
 Options:
   -o DIR        Destination directory (default: $DEST)
@@ -126,6 +127,7 @@ mkdir -p "$DEST"
 
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 failed=0
+declare -A VERSION_CACHE=()
 
 sanitize_version() {
 	local v="$1"
@@ -135,35 +137,30 @@ sanitize_version() {
 	printf '%s' "$v"
 }
 
-image_tag_from_ref() {
-	local image="$1"
+image_version_from_container() {
+	local target="$1"
+	local ref tag
 
-	[[ -n "$image" ]] || { echo "unknown"; return; }
+	[[ -n "$target" ]] || { echo "unknown"; return; }
 
-	if [[ "$image" == *@sha256:* ]]; then
-		sanitize_version "${image##*@sha256:}" | cut -c1-12
-	elif [[ "$image" == *:* ]]; then
-		sanitize_version "${image##*:}"
-	else
-		echo "latest"
-	fi
+	ref=$(docker inspect "$target" --format '{{.Config.Image}}' 2>/dev/null) || {
+		echo "unknown"
+		return
+	}
+
+	ref="${ref%%@*}"
+	tag=$(printf '%s\n' "$ref" | awk -F: '{print $2}')
+	[[ -n "$tag" ]] || tag="latest"
+	sanitize_version "$tag"
 }
 
-image_for_volume() {
-	local vol="$1"
-	local image=""
-
-	image=$(docker ps --filter "volume=${vol}" --format '{{.Image}}' | head -1)
-	if [[ -z "$image" ]]; then
-		image=$(docker ps -a --filter "volume=${vol}" --format '{{.Image}}' | head -1)
-	fi
-
-	image_tag_from_ref "$image"
+container_for_volume() {
+	docker ps -a --filter "volume=${1}" --format '{{.Names}}' | head -1
 }
 
-image_for_bind() {
+container_for_bind() {
 	local path="$1"
-	local resolved cid src image
+	local resolved cid src
 
 	resolved=$(realpath "$path" 2>/dev/null || echo "$path")
 
@@ -172,20 +169,65 @@ image_for_bind() {
 		while IFS= read -r src; do
 			[[ -n "$src" ]] || continue
 			if [[ "$(realpath "$src" 2>/dev/null || echo "$src")" == "$resolved" ]]; then
-				image=$(docker inspect "$cid" --format '{{.Config.Image}}')
-				image_tag_from_ref "$image"
+				docker inspect "$cid" --format '{{.Name}}' | sed 's|^/||'
 				return 0
 			fi
 		done < <(docker inspect "$cid" --format '{{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}{{"\n"}}{{end}}{{end}}')
-	done < <(docker ps -q)
+	done < <(docker ps -aq)
 
-	echo "unknown"
+	return 1
+}
+
+image_for_volume() {
+	local vol="$1"
+	local container
+
+	container=$(container_for_volume "$vol")
+	image_version_from_container "$container"
+}
+
+image_for_bind() {
+	local path="$1"
+	local container
+
+	container=$(container_for_bind "$path") || true
+	image_version_from_container "$container"
+}
+
+cache_versions() {
+	local vol spec path label
+
+	for vol in "${VOLUMES[@]}"; do
+		VERSION_CACHE["volume:${vol}"]=$(image_for_volume "$vol")
+	done
+	for spec in "${BINDS[@]}"; do
+		path="${spec%%:*}"
+		label="${spec#*:}"
+		VERSION_CACHE["bind:${label}"]=$(image_for_bind "$path")
+	done
+}
+
+cached_version_for_volume() {
+	local vol="$1"
+	local version
+
+	version="${VERSION_CACHE["volume:${vol}"]:-$(image_for_volume "$vol")}"
+	printf '%s' "$version"
+}
+
+cached_version_for_bind() {
+	local label="$1"
+	local path="$2"
+	local version
+
+	version="${VERSION_CACHE["bind:${label}"]:-$(image_for_bind "$path")}"
+	printf '%s' "$version"
 }
 
 archive_name() {
 	local base="$1"
 	local version="$2"
-	printf '%s_%s_%s.tar.gz' "$base" "$(sanitize_version "$version")" "$timestamp"
+	printf '%s_%s_%s.tgz' "$base" "$(sanitize_version "$version")" "$timestamp"
 }
 
 stop_containers() {
@@ -206,7 +248,7 @@ backup_volume() {
 	local volume="$1"
 	local version outfile
 
-	version=$(image_for_volume "$volume")
+	version=$(cached_version_for_volume "$volume")
 	outfile="${DEST}/$(archive_name "$volume" "$version")"
 
 	if ! docker volume inspect "$volume" >/dev/null 2>&1; then
@@ -230,7 +272,7 @@ backup_bind() {
 
 	parent=$(dirname "$path")
 	base=$(basename "$path")
-	version=$(image_for_bind "$path")
+	version=$(cached_version_for_bind "$label" "$path")
 	outfile="${DEST}/$(archive_name "$label" "$version")"
 
 	echo "Backing up bind $path (image tag: $version) -> $outfile"
@@ -243,8 +285,11 @@ backup_bind() {
 }
 
 if (( STOP )); then
+	cache_versions
 	stop_containers
 	trap 'start_containers || true' EXIT
+else
+	cache_versions
 fi
 
 for volume in "${VOLUMES[@]}"; do
