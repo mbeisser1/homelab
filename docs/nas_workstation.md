@@ -14,6 +14,7 @@ I wanted a single workstation that could:
 
 ## Evoluent Vertical Mouse 4
 
+### X11
 ![Evoluent VerticalMouse 4 button labels](../evoluent_mouse_buttons_labeled.png)
 
 ```bash
@@ -42,3 +43,50 @@ Section "InputClass"
         Option "ButtonMapping" "1 3 0 4 5 6 7 8 2 10"
 EndSection
 ```
+### Wayland
+
+`xinput set-button-map` is an X11 command and does not remap the physical device under Wayland.  
+Use a udev hwdb rule to remap the mouse at the evdev level.
+
+- Device: SONiX Evoluent VerticalMouse 4
+- Bus: `0003`
+- Vendor: `1a7c`
+- Product: `0191`
+
+#### Final Button Mapping
+
+| Physical button | Scan code | Result |
+|---|---:|---|
+| Left click | `90001` | Left click — unchanged |
+| Right click | `90002` | Right click — unchanged |
+| Middle thumb | `90003` | Right click (`btn_right`) |
+| Top thumb | `90004` | Forward (`btn_forward`) |
+| Upper thumb | `90005` | Middle click (`btn_middle`) |
+| Bottom thumb | `90006` | Back (`btn_side`) |
+
+#### Installation
+
+Create or edit the hwdb rule:
+
+```bash
+sudo vim /etc/udev/hwdb.d/99-evoluent.hwdb
+```
+
+Paste this exact content:
+
+```text
+evdev:input:b0003v1A7Cp0191*
+ KEYBOARD_KEY_90003=btn_right
+ KEYBOARD_KEY_90004=btn_forward
+ KEYBOARD_KEY_90005=btn_middle
+ KEYBOARD_KEY_90006=btn_side
+```
+
+Build the hardware database and reload the rule:
+
+```bash
+sudo systemd-hwdb update
+sudo udevadm trigger
+```
+
+Unplug and replug the mouse. Reboot if the mapping still does not apply.
