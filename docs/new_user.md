@@ -20,6 +20,13 @@ HISTSIZE=10000
 HISTFILESIZE=20000
 ```
 
+## Editor
+
+```bash
+sudo update-alternatives --config editor
+<pick vim.basic>
+```
+
 ## Sudo
 
 ```bash
