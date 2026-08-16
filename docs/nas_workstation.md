@@ -49,9 +49,23 @@ EndSection
 Use a udev hwdb rule to remap the mouse at the evdev level.
 
 - Device: SONiX Evoluent VerticalMouse 4
-- Bus: `0003`
+- Bus: `0003` (Not the physical USB number from `lsusb`)
 - Vendor: `1a7c`
 - Product: `0191`
+
+```bash
+mbeisser@nas-dev:~$ sudo evtest
+No device specified, trying to scan all of /dev/input/event*
+Available devices:
+<snip>
+/dev/input/event6:      SONiX Evoluent VerticalMouse D
+<snip>
+Select the device event number [0-21]: 6
+Input driver version is 1.0.1
+Input device ID: bus 0x3 vendor 0x1a7c product 0x197 version 0x100
+Input device name: "SONiX Evoluent VerticalMouse D"
+Supported events:
+```
 
 #### Final Button Mapping
 
@@ -76,6 +90,8 @@ Paste this exact content:
 
 ```text
 evdev:input:b0003v1A7Cp0191*
+ ID_INPUT_KEY=1
+ ID_INPUT_KEYBOARD=1
  KEYBOARD_KEY_90003=btn_right
  KEYBOARD_KEY_90004=btn_forward
  KEYBOARD_KEY_90005=btn_middle
