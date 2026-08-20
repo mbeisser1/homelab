@@ -12,6 +12,20 @@ I wanted a single workstation that could:
 
 - [Evoluent Vertical Mouse 4](#evoluent-vertical-mouse-4)
 
+## Bluetooth Keyboard
+
+If logitech keyboard is lagging and repeating keys:
+
+Increase the IdleTimeout in `/etc/bluetooth/input.conf` or set it to 0 to disable it.
+
+You can also try setting FastConnectable to true in /etc/bluetooth/main.conf to allow the devices to reconnect faster at the trade off of increased power consumption.
+
+Restart blue tooth after any changes:
+
+```bash
+sudo service bluetooth restart
+```
+
 ## Evoluent Vertical Mouse 4
 
 ### X11
