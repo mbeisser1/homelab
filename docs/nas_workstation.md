@@ -110,6 +110,16 @@ evdev:input:b0003v1A7Cp0191*
  KEYBOARD_KEY_90004=btn_forward
  KEYBOARD_KEY_90005=btn_middle
  KEYBOARD_KEY_90006=btn_side
+
+# Corded Evoluent Mouse
+evdev:input:b0003v1A7Cp0191e0111*
+ ID_INPUT_KEY=1
+ ID_INPUT_KEYBOARD=1
+ KEYBOARD_KEY_90003=btn_right
+ KEYBOARD_KEY_90004=btn_forward
+ KEYBOARD_KEY_90005=btn_middle
+ KEYBOARD_KEY_90006=btn_side
+
 ```
 
 Build the hardware database and reload the rule:
