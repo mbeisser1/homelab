@@ -29,7 +29,7 @@ sudo service bluetooth restart
 ## Evoluent Vertical Mouse 4
 
 ### X11
-![Evoluent VerticalMouse 4 button labels](../evoluent_mouse_buttons_labeled.png)
+![Evoluent VerticalMouse 4 button labels](img/evoluent_mouse_buttons_labeled.png)
 
 ```bash
 $ xinput
