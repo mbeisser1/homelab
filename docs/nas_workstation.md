@@ -103,6 +103,15 @@ sudo vim /etc/udev/hwdb.d/99-evoluent.hwdb
 Paste this exact content:
 
 ```text
+# this one works. Make sure X11 isn't overwriting
+evdev:input:b0003v1A7Cp0197*
+ ID_INPUT_KEY=1
+ KEYBOARD_KEY_272=btn_left
+ KEYBOARD_KEY_273=reserved
+ KEYBOARD_KEY_274=btn_right
+ KEYBOARD_KEY_277=btn_forward
+ KEYBOARD_KEY_278=btn_back
+
 evdev:input:b0003v1A7Cp0191*
  ID_INPUT_KEY=1
  ID_INPUT_KEYBOARD=1
